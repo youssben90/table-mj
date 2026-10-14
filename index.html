@@ -118,6 +118,7 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .login-card input{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px}
 .login-card .btn{margin-top:8px;padding:9px}
 .login-err{color:var(--danger)!important;margin:4px 0 0!important}
+.code-hint{align-self:center;font-size:12px;color:var(--muted)}
 .tag.sync.ok{color:var(--ok);border-color:rgba(111,191,138,.4)}
 .tag.sync.err{color:var(--danger);border-color:rgba(217,112,95,.5)}
 /* Salon Discord */
@@ -294,7 +295,8 @@ const DEFAULT = {
   ambiance:{lieu:'Valbrune', jour:'3e jour de Flamerègne', heure:'Crépuscule', meteo:'Pluie fine', objectif:"Retrouver l'apprenti disparu de Maître Aldric"},
   music:{playlist:0, track:0, playing:false, volume:60},
   split:'both',
-  skin:'nuit'
+  skin:'nuit',
+  codeJoueurs:''
 };
 
 function load(){
@@ -309,7 +311,7 @@ const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 const PUBLIC_KEYS  = ['owlbearUrl','images','current','ambiance','skin','discord']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music'];                                   // réservés au MJ
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
@@ -332,12 +334,35 @@ async function push(){
   ]);
   if(a.error || b.error){ setSync('error'); toast('Synchronisation impossible : ' + (a.error||b.error).message); }
   else setSync('ok');
+  broadcast();
+}
+/* Diffusion en direct aux joueurs, sur un canal dont le nom dépend du code joueurs */
+let liveCh = null, liveCode = null, liveReady = false;
+function ensureLive(){
+  const code = state.codeJoueurs || '';
+  if(code === liveCode) return;
+  if(liveCh) sb.removeChannel(liveCh);
+  liveCh = null; liveReady = false; liveCode = code;
+  if(!code) return;
+  liveCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}});
+  liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
+}
+function broadcast(){
+  if(!sb || !isAdmin) return;
+  ensureLive();
+  if(liveCh && liveReady) liveCh.send({type:'broadcast', event:'etat', payload: pick(state, PUBLIC_KEYS)});
 }
 function setSync(st){
   const el = document.getElementById('syncTag'); if(!el) return;
   const map = {ok:['En ligne · synchronisé','ok'], pending:['Envoi…',''], error:['Hors ligne · non synchronisé','err'], local:['Mode local (non publié)','']};
   const [txt, cls] = map[st] || map.local;
   el.textContent = txt; el.className = 'tag sync ' + cls;
+}
+function receive(s){
+  const prevObr = state.owlbearUrl;
+  state = Object.assign(structuredClone(DEFAULT), state, s);
+  renderShared();
+  if(!isAdmin && state.owlbearUrl !== prevObr) renderLeft(); // ne recharge Owlbear que si le lien change
 }
 bc && (bc.onmessage = e => receive(e.data));
 addEventListener('storage', e => { if(e.key===KEY && e.newValue){ try{ receive(JSON.parse(e.newValue)); }catch(_){} } });
@@ -425,6 +450,7 @@ function renderLeft(){
         <label for="capInput">Titre affiché</label><input id="capInput" class="cap-in" placeholder="Sélectionnez une image">
         <label for="obrUrl">Room Owlbear</label><input id="obrUrl" placeholder="https://www.owlbear.rodeo/room/…" value="${esc(state.owlbearUrl)}">
         <label for="notesUrl">Notes (Google Doc)</label><input id="notesUrl" placeholder="https://docs.google.com/document/d/…" value="${esc(state.notesUrl)}">
+        <label for="codeJ">Code joueurs</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="Ex. dragon-rouge" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'À donner aux joueurs' : 'Vue joueurs fermée tant qu\'aucun code'}</span></div>
         <label for="dcUrl">Salon Discord</label><div class="dc-row"><input id="dcUrl" placeholder="Lien du salon : https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Nom affiché" value="${esc(state.discord.label)}"></div>
       </div>
     </div>
@@ -464,6 +490,11 @@ function renderLeft(){
     if(url && !m){ toast('Lien non reconnu : clic droit sur le salon > Copier le lien'); return; }
     state.discord = Object.assign(state.discord, {url, guild:m?m[1]:'', channel:m?m[2]:''});
     save(); renderChannel(); toast(url ? 'Salon Discord enregistré' : 'Salon Discord retiré');
+  };
+  $('#codeJ').onchange = e => {
+    state.codeJoueurs = e.target.value.trim();
+    save(); renderLeft();
+    toast(state.codeJoueurs ? 'Code joueurs : ' + state.codeJoueurs : 'Vue joueurs fermée (aucun code)');
   };
   $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
   $('#obrUrl').onchange = e => { state.owlbearUrl=e.target.value.trim(); save(); renderLeft(); toast('Room Owlbear enregistrée'); };
@@ -570,13 +601,40 @@ async function boot(){
     renderAll();
     if(firstRun) push();                                  // publie l'état de départ
   } else {
+    let code = ''; try{ code = localStorage.getItem('table-mj-code') || ''; }catch(e){}
+    if(!code){ askCode(); return; }
+    const data = await readTable(code);
+    if(!data){ try{ localStorage.removeItem('table-mj-code'); }catch(e){} askCode(true); return; }
     state = structuredClone(DEFAULT); state.images = []; state.current = null;
-    const { data } = await sb.from('etat').select('data').eq('id','public').maybeSingle();
-    if(data && data.data) Object.assign(state, data.data);
+    Object.assign(state, data);
     renderAll();
-    sb.channel('table').on('postgres_changes', {event:'UPDATE', schema:'public', table:'etat', filter:'id=eq.public'},
-      payload => receive(payload.new.data)).subscribe();
+    sb.channel('table-' + code).on('broadcast', {event:'etat'}, msg => receive(msg.payload)).subscribe();
+    // Contrôle régulier : rattrape un message manqué, et ferme la vue si le MJ change le code
+    setInterval(async () => {
+      const d = await readTable(code);
+      if(d) receive(d); else { try{ localStorage.removeItem('table-mj-code'); }catch(e){} location.reload(); }
+    }, 30000);
   }
+}
+async function readTable(code){
+  const { data, error } = await sb.rpc('lire_table', { code });
+  return error ? null : data;
+}
+function askCode(wrong){
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').innerHTML = `
+    <h1>Table du MJ</h1>
+    <p>Entrez le code donné par votre maître du jeu.</p>
+    <label for="cdIn">Code d'accès</label><input id="cdIn" autocomplete="off" required autofocus>
+    <button class="btn primary" type="submit">Rejoindre la table</button>
+    <p class="login-err" id="lgErr" ${wrong?'':'hidden'}>Code incorrect ou expiré.</p>`;
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const code = $('#cdIn').value.trim();
+    if(!(await readTable(code))){ const er=$('#lgErr'); er.textContent='Code incorrect.'; er.hidden=false; return; }
+    try{ localStorage.setItem('table-mj-code', code); }catch(e){}
+    location.reload();
+  };
 }
 function showLogin(){
   $('#login').hidden = false; $('#app').style.visibility = 'hidden';
