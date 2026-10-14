@@ -225,6 +225,11 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .lib-ed{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:var(--panel);color:var(--muted);font-size:12px;opacity:0}
 .lib-it:hover .lib-ed,.lib-ed:focus-visible{opacity:1}
 .lib-prev{display:grid;place-items:center;padding:6px 0}
+.lib-gt{display:flex;align-items:center;justify-content:space-between}
+.lib-add{border:0;background:transparent;color:var(--gold);font:600 12px var(--f-body);letter-spacing:0;text-transform:none;padding:2px 4px}
+.swatches{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--c);padding:0}
+.sw.on{border-color:var(--text);box-shadow:0 0 0 3px var(--gold-soft)}
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
 .modal-card{width:min(360px,100%);display:grid;gap:10px;background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);padding:22px;text-align:center}
 .modal-card h2{margin:0;font:700 20px var(--f-display);color:var(--gold);letter-spacing:.04em}
@@ -396,12 +401,22 @@ const DEFAULT_CARTE = {
     {id:'j5', nom:'Ogre',   type:'ennemi', couleur:'#7a3a2c', img:'', taille:2, x:1050, y:280, visible:false}
   ]
 };
+const PLAYER_COLORS = ['#5b8fd6','#c76fa8','#d69a4a','#4fa37a','#8a6fd1','#d0584a','#3fa3b5','#a8a24a'];
 const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC'};
 
 const MAP_VIEWS = {};
 let currentMap = null;
 
-function initials(n){ return (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function initials(n){
+  const t = (n||'?').trim(), num = t.match(/\s(\d+)$/);
+  return (t[0] || '?').toUpperCase() + (num ? num[1] : '');   // « Mira » → M, « Goblin 2 » → G2
+}
+/* Fiche joueur (couleur, image) : c'est elle qui habille le jeton du joueur sur la carte */
+function rosterOf(nom){ return (state.joueurs || []).find(j => j.nom === nom); }
+function faceOf(t){
+  if(t.type === 'pj'){ const r = rosterOf(t.nom); if(r) return {couleur:r.couleur, img:r.img || ''}; }
+  return {couleur:t.couleur, img:t.img || ''};
+}
 function snap(v, off, cell){ return off + Math.round((v - off) / cell) * cell; }
 
 function mountMap(host, key, opts){
@@ -465,9 +480,10 @@ function mountMap(host, key, opts){
       if(!el){ el = document.createElement('div'); el.className = 'tok'; el.dataset.id = t.id; layer.appendChild(el); }
       if(dragging && dragging.id === t.id) return;           // ne pas contrarier le glisser en cours
       const size = c.cell * (t.taille || 1);
-      el.style.cssText = `left:${t.x}px;top:${t.y}px;width:${size}px;height:${size}px;--tc:${t.couleur || '#888'}`;
+      const f = faceOf(t);
+      el.style.cssText = `left:${t.x}px;top:${t.y}px;width:${size}px;height:${size}px;--tc:${f.couleur || '#888'}`;
       el.className = `tok t-${t.type}${t.visible === false ? ' hid' : ''}${canMove(t) ? ' mov' : ''}${selected === t.id ? ' sel' : ''}${t.type==='pj' && t.nom===opts.me ? ' me' : ''}`;
-      el.innerHTML = `<div class="tok-c">${t.img ? `<img src="${esc(t.img)}" alt="" draggable="false">` : `<span>${esc(initials(t.nom))}</span>`}</div><div class="tok-n">${esc(t.nom)}</div>`;
+      el.innerHTML = `<div class="tok-c">${f.img ? `<img src="${esc(f.img)}" alt="" draggable="false">` : `<span>${esc(initials(t.nom))}</span>`}</div><div class="tok-n">${esc(t.nom)}</div>`;
     });
   }
   function render(){
@@ -599,22 +615,78 @@ function mountMap(host, key, opts){
     pLib.hidden = !open; if(open) renderLib();
   }
   function renderLib(){
-    const groups = Object.entries(TYPE_LABEL).map(([k,l]) => {
-      const items = LIB().filter(t => t.type === k);
-      return items.length ? `<div class="lib-g"><div class="lib-gt">${({pj:'Players', ennemi:'Enemies', pnj:'NPCs'})[k]}</div><div class="lib-grid">${items.map(t => `
-        <div class="lib-it"><button class="lib-place" data-place="${esc(t.id)}" title="Place ${esc(t.nom)} on the map">
+    const item = (t, place, edit) => `
+        <div class="lib-it"><button class="lib-place" data-${place}="${esc(t.id)}" title="Place ${esc(t.nom)} on the map">
           <span class="lib-c" style="--tc:${esc(t.couleur)}">${tokFace(t)}</span><span class="lib-n">${esc(t.nom)}</span></button>
-          <button class="lib-ed" data-edit="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">✎</button></div>`).join('')}</div></div>` : '';
+          <button class="lib-ed" data-${edit}="${esc(t.id)}" aria-label="Edit ${esc(t.nom)}">✎</button></div>`;
+    const players = state.joueurs || [];
+    const groups = [['ennemi','Enemies'], ['pnj','NPCs']].map(([k,l]) => {
+      const items = LIB().filter(t => t.type === k);
+      return items.length ? `<div class="lib-g"><div class="lib-gt">${l}</div><div class="lib-grid">${items.map(t => item(t,'place','edit')).join('')}</div></div>` : '';
     }).join('');
     pLib.innerHTML = `
       <div class="bm-ph"><b>Token library</b><button class="bm-x" aria-label="Close">✕</button></div>
-      <p class="bm-hint">Click a template to place it on the map.</p>
-      ${groups || '<p class="bm-hint">No templates yet.</p>'}
-      <button class="btn primary" id="libNew">+ New template</button>`;
+      <p class="bm-hint">Click a token to place it on the map.</p>
+      <div class="lib-g" id="libPlayers"><div class="lib-gt">Players <button class="lib-add" id="plNew">+ Add player</button></div>
+        <p class="bm-hint">This list is what players see on the “Who are you?” screen.</p>
+        <div class="lib-grid">${players.map(t => item(t,'pplace','pedit')).join('') || '<p class="bm-hint">No players yet.</p>'}</div></div>
+      ${groups}
+      <button class="btn primary" id="libNew">+ New enemy or NPC</button>`;
     pLib.querySelector('.bm-x').onclick = () => toggleLib(false);
     pLib.querySelector('#libNew').onclick = () => editModel(null);
+    pLib.querySelector('#plNew').onclick = () => editPlayer(null);
     pLib.querySelectorAll('[data-place]').forEach(b => b.onclick = () => placeModel(b.dataset.place));
     pLib.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editModel(b.dataset.edit));
+    pLib.querySelectorAll('[data-pplace]').forEach(b => b.onclick = () => placePlayer(b.dataset.pplace));
+    pLib.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => editPlayer(b.dataset.pedit));
+  }
+  function placePlayer(id){
+    const r = (state.joueurs || []).find(j => j.id === id); if(!r) return;
+    if(C().jetons.some(t => t.type === 'pj' && t.nom === r.nom)) return toast(r.nom + ' is already on the map');
+    const c = C(), rc = root.getBoundingClientRect(), w = toWorld(rc.left + rc.width/2, rc.top + rc.height/2);
+    const spot = freeSpot(c, snap(w.x - c.cell/2, c.offX, c.cell), snap(w.y - c.cell/2, c.offY, c.cell));
+    c.jetons.push({id:'t'+Date.now().toString(36), nom:r.nom, type:'pj', couleur:r.couleur, img:'', taille:1, x:spot.x, y:spot.y, visible:true});
+    save(); renderTokens(); toast(r.nom + ' placed on the map');
+  }
+  function editPlayer(id){
+    const list = (state.joueurs = state.joueurs || []);
+    const r = id ? list.find(j => j.id === id) : {nom:'', couleur:PLAYER_COLORS[list.length % PLAYER_COLORS.length], img:''};
+    if(!r) return;
+    const d = Object.assign({}, r), oldName = r.nom;
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>${id ? 'Edit player' : 'New player'}</b><button class="bm-x" aria-label="Back">✕</button></div>
+      <div class="lib-prev"><span class="lib-c big" id="pdPrev" style="--tc:${esc(d.couleur)}">${tokFace(d)}</span></div>
+      <label for="pdNom">Character name</label><input id="pdNom" value="${esc(d.nom)}" placeholder="e.g. Kaelen">
+      <label for="pdCol">Color</label><input id="pdCol" type="color" value="${esc(d.couleur)}">
+      <label for="pdImg">Picture</label>
+      <div class="bm-row"><input id="pdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="pdFile">Upload</label><input id="pdFile" type="file" accept="image/*" hidden></div>
+      <button class="btn" id="pdNoImg" ${d.img ? '' : 'hidden'}>Remove picture (back to initial)</button>
+      <p class="bm-hint">Players can also pick their own color and picture from the player view.</p>
+      <div class="bm-row"><button class="btn primary" id="pdSave">Save</button>${id ? '<button class="btn bm-del" id="pdDel">Delete player</button>' : ''}</div>`;
+    const prev = () => { const el = pLib.querySelector('#pdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); pLib.querySelector('#pdNoImg').hidden = !d.img; };
+    pLib.querySelector('.bm-x').onclick = renderLib;
+    pLib.querySelector('#pdNom').oninput = e => { d.nom = e.target.value; prev(); };
+    pLib.querySelector('#pdCol').oninput = e => { d.couleur = e.target.value; prev(); };
+    pLib.querySelector('#pdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
+    pLib.querySelector('#pdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
+    pLib.querySelector('#pdNoImg').onclick = () => { d.img = ''; pLib.querySelector('#pdImg').value = ''; prev(); };
+    pLib.querySelector('#pdSave').onclick = () => {
+      d.nom = d.nom.trim();
+      if(!d.nom) return toast('Give the player a name.');
+      if(list.some(j => j.nom === d.nom && j.id !== id)) return toast('Another player already has that name.');
+      if(id){
+        Object.assign(r, d);
+        if(oldName !== d.nom) C().jetons.forEach(t => { if(t.type === 'pj' && t.nom === oldName) t.nom = d.nom; });
+      } else list.push(Object.assign(d, {id:'p'+Date.now().toString(36)}));
+      save(); renderTokens(); renderLib(); toast('Player saved');
+    };
+    const del = pLib.querySelector('#pdDel');
+    if(del) del.onclick = () => {
+      state.joueurs = list.filter(j => j.id !== id);
+      C().jetons = C().jetons.filter(t => !(t.type === 'pj' && t.nom === oldName));
+      save(); renderTokens(); renderLib(); toast(oldName + ' removed');
+    };
+    setTimeout(() => pLib.querySelector('#pdNom').focus(), 30);
   }
   function freeSpot(c, x, y){
     // décale vers la droite puis la ligne suivante tant que la case est occupée
@@ -648,7 +720,7 @@ function mountMap(host, key, opts){
       <div class="lib-prev"><span class="lib-c big" id="mdPrev" style="--tc:${esc(d.couleur)}">${tokFace(d)}</span></div>
       <label for="mdNom">Name</label><input id="mdNom" value="${esc(d.nom)}" placeholder="e.g. Goblin, City guard…">
       <label for="mdType">Type</label>
-      <select id="mdType">${Object.entries(TYPE_LABEL).map(([k,l]) => `<option value="${k}" ${d.type===k?'selected':''}>${l}</option>`).join('')}</select>
+      <select id="mdType">${Object.entries(TYPE_LABEL).filter(([k]) => k !== 'pj').map(([k,l]) => `<option value="${k}" ${d.type===k?'selected':''}>${l}</option>`).join('')}</select>
       <label>Size</label>
       <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(d.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
       <label for="mdCol">Color</label><input id="mdCol" type="color" value="${esc(d.couleur)}">
@@ -687,11 +759,12 @@ function mountMap(host, key, opts){
       <p class="bm-hint" ${t.type==='pj'?'':'hidden'}>The player who picks this name can move this token.</p>
       <label>Size</label>
       <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(t.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
-      <label for="tkCol">Color</label><input id="tkCol" type="color" value="${esc(t.couleur || '#888888')}">
-      <label for="tkImg">Image</label>
-      <div class="bm-row"><input id="tkImg" placeholder="Image link (optional)" value="${esc(t.img && !t.img.startsWith('data:') ? t.img : '')}"><label class="btn" for="tkFile">Upload</label><input id="tkFile" type="file" accept="image/*" hidden></div>
+      ${t.type === 'pj' ? `<p class="bm-hint">This player's color and picture are set in the token library (Players).</p>` : `
+      <label for="tkCol">Color</label><input id="tkCol" type="color" value="${esc(t.couleur || '#888888')}">`}
+      ${t.type === 'pj' ? '' : `<label for="tkImg">Image</label>
+      <div class="bm-row"><input id="tkImg" placeholder="Image link (optional)" value="${esc(t.img && !t.img.startsWith('data:') ? t.img : '')}"><label class="btn" for="tkFile">Upload</label><input id="tkFile" type="file" accept="image/*" hidden></div>`}
       <label class="bm-check"><input id="tkVis" type="checkbox" ${t.visible!==false?'checked':''}> Visible to players</label>
-      <div class="bm-row"><button class="btn" id="tkLib">Add to library</button><button class="btn bm-del" id="tkDel">Delete</button></div>`;
+      <div class="bm-row">${t.type === 'pj' ? '' : '<button class="btn" id="tkLib">Add to library</button>'}<button class="btn bm-del" id="tkDel">${t.type === 'pj' ? 'Remove from map' : 'Delete'}</button></div>`;
     const upd = patch => { Object.assign(t, patch); save(); renderTokens(); };
     pTok.querySelector('.bm-x').onclick = () => select(null);
     pTok.querySelector('#tkNom').oninput = e => upd({nom:e.target.value});
@@ -700,19 +773,20 @@ function mountMap(host, key, opts){
       upd({type, couleur:col}); select(t.id);
     };
     pTok.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { upd({taille:+b.dataset.sz}); select(t.id); });
-    pTok.querySelector('#tkCol').oninput = e => upd({couleur:e.target.value});
-    pTok.querySelector('#tkImg').onchange = e => upd({img:e.target.value.trim()});
-    pTok.querySelector('#tkFile').onchange = async e => {
+    const on = (sel, ev, fn) => { const el = pTok.querySelector(sel); if(el) el[ev] = fn; };
+    on('#tkCol', 'oninput', e => upd({couleur:e.target.value}));
+    on('#tkImg', 'onchange', e => upd({img:e.target.value.trim()}));
+    on('#tkFile', 'onchange', async e => {
       const f = e.target.files[0]; if(!f) return;
       const url = await storeImage(f); if(url){ upd({img:url}); select(t.id); }
-    };
+    });
     pTok.querySelector('#tkVis').onchange = e => upd({visible:e.target.checked});
     pTok.querySelector('#tkDel').onclick = () => { C().jetons = C().jetons.filter(j => j.id !== t.id); save(); select(null); };
-    pTok.querySelector('#tkLib').onclick = () => {
+    on('#tkLib', 'onclick', () => {
       const base = t.nom.replace(/\s+\d+$/, '');
       LIB().push({id:'m'+Date.now().toString(36), nom:base, type:t.type, couleur:t.couleur, img:t.img || '', taille:t.taille || 1});
       save(); toast(base + ' added to the library');
-    };
+    });
   }
   function toggleCfg(){
     pTok.hidden = true; pLib.hidden = true; selected = null; renderTokens();
@@ -748,6 +822,7 @@ function mountMap(host, key, opts){
   render();
   return {
     refresh(){ render(); },
+    openPlayers(){ toggleLib(true); const g = pLib.querySelector('#libPlayers'); g && g.scrollIntoView({block:'start'}); },
     fit(){ requestAnimationFrame(fit); },
     moveToken(id, x, y){
       if(dragging && dragging.id === id) return;
@@ -782,8 +857,12 @@ const DEFAULT = {
     {id:'m1', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1},
     {id:'m2', nom:'Wolf', type:'ennemi', couleur:'#6b6f78', img:'', taille:1},
     {id:'m3', nom:'Guard', type:'pnj', couleur:'#c9a13f', img:'', taille:1},
-    {id:'m4', nom:'Ogre', type:'ennemi', couleur:'#7a3a2c', img:'', taille:2},
-    {id:'m5', nom:'Kaelen', type:'pj', couleur:'#5b8fd6', img:'', taille:1}
+    {id:'m4', nom:'Ogre', type:'ennemi', couleur:'#7a3a2c', img:'', taille:2}
+  ],
+  joueurs:[
+    {id:'p1', nom:'Kaelen', couleur:'#5b8fd6', img:''},
+    {id:'p2', nom:'Mira',   couleur:'#c76fa8', img:''},
+    {id:'p3', nom:'Thorin', couleur:'#d69a4a', img:''}
   ]
 };
 
@@ -798,7 +877,7 @@ let bc = null; try{ bc = new BroadcastChannel('table-mj'); }catch(e){}
 const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
-const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord']; // visibles par les joueurs
+const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
 const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
@@ -834,6 +913,7 @@ function ensureLive(){
   if(!code) return;
   liveCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}});
   liveCh.on('broadcast', {event:'jeton'}, m => applyJeton(m.payload));
+  liveCh.on('broadcast', {event:'joueur'}, m => { applyJoueur(m.payload); });
   liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
 }
 function broadcast(){
@@ -947,6 +1027,7 @@ function renderLeft(){
     <div class="pane">
       <div class="pane-h"><h2>Image library</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
         <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
+        <button class="btn" id="playersBtn">Players</button>
         <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
       <div class="lib" id="lib"></div>
       <div class="add">
@@ -1003,6 +1084,10 @@ function renderLeft(){
   const lo = $('#logoutBtn'); if(lo) lo.onclick = async () => {
     clearTimeout(pushTimer); if(pushTimer) await push();   // envoie les derniers changements
     await sb.auth.signOut(); location.reload();
+  };
+  $('#playersBtn').onclick = () => {
+    if(state.split === 'notes'){ state.split = 'both'; save(); renderLeft(); }
+    currentMap && currentMap.openPlayers();
   };
   $('#setBtn').onclick = e => { e.stopPropagation(); toggleSettings(!settingsOpen); };
   $('#dcUrl').onchange = e => {
@@ -1160,9 +1245,10 @@ async function boot(){
     playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}})
       .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
       .on('broadcast', {event:'jeton'}, msg => applyJeton(msg.payload))
+      .on('broadcast', {event:'joueur'}, msg => applyJoueur(msg.payload))
       .subscribe();
     // Premier passage : proposer d'importer son image de jeton
-    const mine = myToken();
+    const mine = myPlayer();
     let asked = false; try{ asked = sessionStorage.getItem('table-mj-jeton-propose') === '1'; }catch(e){}
     if(mine && !mine.img && !asked){ try{ sessionStorage.setItem('table-mj-jeton-propose','1'); }catch(e){} openMyToken(true); }
     // Contrôle régulier : rattrape un message manqué, et ferme la vue si le MJ change le code
@@ -1176,7 +1262,7 @@ async function readTable(code){
   const { data, error } = await sb.rpc('lire_table', { code });
   return error ? null : data;
 }
-function myToken(){ return me && me !== '-' && state.carte ? state.carte.jetons.find(t => t.type === 'pj' && t.nom === me) : null; }
+function myPlayer(){ return me && me !== '-' ? rosterOf(me) : null; }
 /* Réduit une image en vignette carrée (≈10 Ko) pour le jeton du joueur */
 function tokenThumb(file){
   return new Promise((res, rej) => {
@@ -1194,35 +1280,53 @@ function tokenThumb(file){
   });
 }
 function openMyToken(first){
-  const t = myToken(); if(!t) return;
+  const r = myPlayer(); if(!r) return;
   const m = $('#modal');
+  const face = () => r.img ? `<img src="${esc(r.img)}" alt="">` : `<span>${esc(initials(r.nom))}</span>`;
   m.hidden = false;
   m.innerHTML = `<div class="modal-card" role="dialog" aria-labelledby="mtT">
     <h2 id="mtT">${first ? 'Your token' : 'My token'}</h2>
-    <p>${first ? 'Upload a picture of ' + esc(t.nom) + ' for the map. You can change it later with "My token".' : 'Change the picture of ' + esc(t.nom) + ' on the map.'}</p>
-    <div class="lib-prev"><span class="lib-c big" id="mtPrev" style="--tc:${esc(t.couleur)}">${t.img ? `<img src="${esc(t.img)}" alt="">` : `<span>${esc(initials(t.nom))}</span>`}</span></div>
-    <label class="btn primary" for="mtFile">Upload an image</label><input id="mtFile" type="file" accept="image/*" hidden>
-    <button class="btn" id="mtClose">${first ? 'Later' : 'Close'}</button>
+    <p>${first ? 'Pick a color or upload a picture for ' + esc(r.nom) + '. You can change it later with “My token”.' : 'Change how ' + esc(r.nom) + ' looks on the map.'}</p>
+    <div class="lib-prev"><span class="lib-c big" id="mtPrev" style="--tc:${esc(r.couleur)}">${face()}</span></div>
+    <div class="swatches" role="group" aria-label="Token color">${PLAYER_COLORS.map(c => `<button class="sw ${c===r.couleur?'on':''}" data-c="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div>
+    <label class="btn primary" for="mtFile">Upload a picture</label><input id="mtFile" type="file" accept="image/*" hidden>
+    <button class="btn" id="mtNoImg" ${r.img ? '' : 'hidden'}>Use my initial instead</button>
+    <button class="btn" id="mtClose">${first ? 'Done' : 'Close'}</button>
   </div>`;
+  const refresh = () => {
+    const p = $('#mtPrev'); p.style.setProperty('--tc', r.couleur); p.innerHTML = face();
+    $('#mtNoImg').hidden = !r.img;
+    m.querySelectorAll('.sw').forEach(b => b.classList.toggle('on', b.dataset.c === r.couleur));
+  };
+  async function commit(patch){
+    const prev = {couleur:r.couleur, img:r.img};
+    Object.assign(r, patch); refresh(); currentMap && currentMap.refresh();
+    if(sb){
+      const { data, error } = await sb.rpc('mon_jeton', {code:playerCode, joueur:me, couleur:r.couleur, img: patch.img === undefined ? null : patch.img});
+      if(error || data === false){ Object.assign(r, prev); refresh(); currentMap && currentMap.refresh(); toast('Not saved. Try again or ask your GM.'); return; }
+    } else save();
+    playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:Object.assign({nom:r.nom, couleur:r.couleur}, patch.img === undefined ? {} : {img:r.img})});
+    toast('Token updated');
+  }
+  m.querySelectorAll('.sw').forEach(b => b.onclick = () => commit({couleur:b.dataset.c}));
+  $('#mtNoImg').onclick = () => commit({img:''});
   $('#mtClose').onclick = () => { m.hidden = true; };
   m.onclick = e => { if(e.target === m) m.hidden = true; };   // clic à côté : fermer
   $('#mtFile').onchange = async e => {
     const f = e.target.files[0]; if(!f) return;
-    try{
-      const img = await tokenThumb(f);
-      if(sb){
-        const { data, error } = await sb.rpc('image_jeton', {code:playerCode, joueur:me, img});
-        if(error || data === false){ toast("Image not saved. Try again or ask your GM."); return; }
-      }
-      t.img = img; currentMap && currentMap.refresh();
-      playerCh && playerCh.send({type:'broadcast', event:'jeton', payload:{id:t.id, img}});
-      $('#mtPrev').innerHTML = `<img src="${img}" alt="">`;
-      toast('Token updated'); $('#mtClose').textContent = 'Done';
-    }catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
+    try{ commit({img: await tokenThumb(f)}); }
+    catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
   };
 }
+/* Un joueur a changé sa couleur ou son image */
+function applyJoueur(p){
+  const r = rosterOf(p.nom); if(!r) return;
+  if(p.couleur) r.couleur = p.couleur;
+  if(p.img !== undefined) r.img = p.img;
+  currentMap && currentMap.refresh();
+}
 function chooseIdentity(data){
-  const pjs = ((data.carte && data.carte.jetons) || []).filter(t => t.type === 'pj' && t.visible !== false);
+  const pjs = (data.joueurs || []);
   $('#login').hidden = false; $('#app').style.visibility = 'hidden';
   $('#loginForm').innerHTML = `
     <h1>Who are you?</h1>
