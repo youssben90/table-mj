@@ -929,6 +929,7 @@ function setSync(st){
 }
 function receive(s){
   state = Object.assign(structuredClone(DEFAULT), state, s);
+  for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);
   renderShared();
   currentMap && currentMap.refresh();
 }
@@ -1227,9 +1228,11 @@ async function boot(){
     const pub = data.find(r=>r.id==='public')?.data || {}, prv = data.find(r=>r.id==='prive')?.data || {};
     const firstRun = !Object.keys(pub).length;
     state = Object.assign(structuredClone(DEFAULT), firstRun ? {} : pub, prv);
+    for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);   // champs manquants ou vides
     renderAll();
     ensureLive();                                         // écoute les déplacements des joueurs
-    if(firstRun) push();                                  // publie l'état de départ
+    // publie l'état de départ, ou les nouveautés d'une mise à jour du site (ex. liste des joueurs)
+    if(firstRun || PUBLIC_KEYS.some(k => !(k in pub))) push();
   } else {
     try{ localStorage.removeItem('table-mj-code'); }catch(e){}   // ancienne version : code mémorisé durablement
     let code = ''; try{ code = sessionStorage.getItem('table-mj-code') || ''; }catch(e){}
@@ -1241,6 +1244,7 @@ async function boot(){
     if(!me){ chooseIdentity(data); return; }
     state = structuredClone(DEFAULT); state.images = []; state.current = null;
     Object.assign(state, data);
+    for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);
     renderAll();
     playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}})
       .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
@@ -1332,6 +1336,7 @@ function chooseIdentity(data){
     <h1>Who are you?</h1>
     <p>Pick your character so you can move their token on the map.</p>
     <div class="who-list">${pjs.map(t => `<button type="button" class="btn who" data-n="${esc(t.nom)}"><span class="dot" style="background:${esc(t.couleur)}"></span>${esc(t.nom)}</button>`).join('')}
+      ${pjs.length ? '' : '<p class="bm-hint">Your GM hasn\'t added any player characters yet.</p>'}
       <button type="button" class="btn who" data-n="-">Just watch</button></div>`;
   $('#loginForm').querySelectorAll('.who').forEach(b => b.onclick = () => {
     try{ sessionStorage.setItem('table-mj-joueur', b.dataset.n); }catch(e){}
