@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table du MJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;500;600;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Mise en page : bandeau d'ambiance en haut, carte Owlbear à gauche (pleine hauteur), image + Discord à droite.
+   Vue admin : même ossature, la carte est remplacée par le poste de commande, barre Spotify en bas. */
+:root{
+  --ink:#0f1318;        /* fond général, encre bleu nuit */
+  --panel:#171c23;      /* cadrans */
+  --panel-2:#1f262f;    /* champs, éléments surélevés */
+  --line:#2b3440;       /* bordures */
+  --text:#e7e2d8;       /* texte principal, ivoire froid */
+  --muted:#8d97a3;      /* texte secondaire */
+  --gold:#d6a24a;       /* accent : or de chandelle */
+  --gold-soft:rgba(214,162,74,.14);
+  --blurple:#7d86e8;    /* touche Discord */
+  --danger:#d9705f;
+  --ok:#6fbf8a;
+  --f-display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --well:#0b0e12; --code-bg:#11151a; --on-gold:#1a1408; --msg:#d4d0c8;
+  --r:10px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--text);font:15px/1.45 var(--f-body);overflow:hidden}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:10px 12px}
+
+/* ---------- Bandeau ---------- */
+.banner{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-height:52px}
+.banner .cell{display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-right:1px solid var(--line);min-width:0}
+.banner .cell:last-child{border-right:0}
+.banner .lbl{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.banner .val{font-family:var(--f-display);font-size:17px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner .cell.lieu .val{font-size:20px;color:var(--gold)}
+.banner .cell.quest{flex:1;background:linear-gradient(90deg,var(--gold-soft),transparent 70%)}
+.banner .cell.quest .val{font-family:var(--f-body);font-size:16px;font-weight:500;letter-spacing:0}
+.banner input.val{background:transparent;border:0;border-bottom:1px dashed var(--line);padding:0;width:100%;min-width:90px}
+.banner input.val:focus{outline:none;border-bottom-color:var(--gold)}
+
+/* ---------- Grille principale ---------- */
+.main{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:10px;min-height:0}
+.col{display:grid;gap:10px;min-height:0}
+.col.right{grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none}
+.pane-h h2{margin:0;font:700 12px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.pane-h .sp{flex:1}
+.pane-b{flex:1;min-height:0;position:relative}
+.tag{font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:4px;background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.tag.ex{color:var(--gold);border-color:rgba(214,162,74,.4)}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:13px}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--on-gold);border-color:var(--gold);font-weight:700}
+a.btn{text-decoration:none;color:var(--text)}
+
+iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--well)}
+
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted)}
+.empty b{display:block;font-family:var(--f-display);color:var(--text);font-size:18px;margin-bottom:6px;letter-spacing:.04em}
+
+/* Image de scène */
+.scene{position:absolute;inset:0;display:grid;place-items:center;background:var(--well)}
+.scene img{max-width:100%;max-height:100%;object-fit:contain;transition:opacity .35s}
+.scene .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 14px 10px;background:linear-gradient(transparent,rgba(0,0,0,.75));font-family:var(--f-display);font-size:18px;letter-spacing:.04em}
+
+/* ---------- Discord / Avrae ---------- */
+.feed{position:absolute;inset:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:12px}
+.msg{display:grid;grid-template-columns:32px 1fr;gap:10px}
+.av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--f-body);color:#0f1318}
+.msg .who{font-weight:700;font-size:14px}
+.msg .who .bot{font:600 9px/1 var(--f-mono);background:var(--blurple);color:#fff;padding:2px 4px;border-radius:3px;margin-left:6px;vertical-align:2px}
+.msg .when{color:var(--muted);font-size:11px;margin-left:6px;font-weight:400}
+.msg .txt{font-size:14px;color:var(--msg)}
+.embed{margin-top:4px;background:var(--panel-2);border-left:4px solid var(--blurple);border-radius:4px;padding:8px 10px;font-size:13px}
+.embed .t{font-weight:700;margin-bottom:4px}
+.embed .f{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px 12px;margin-top:6px}
+.embed .f .k{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.embed code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);padding:1px 4px;border-radius:3px}
+.crit{color:var(--ok);font-weight:700}
+
+/* ---------- Admin ---------- */
+.console{grid-template-rows:auto minmax(0,1fr)}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding:10px 12px;max-height:228px;overflow-y:auto}
+.thumb{position:relative;border:2px solid transparent;border-radius:8px;overflow:hidden;background:var(--well);aspect-ratio:4/3;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .n{position:absolute;left:0;right:0;bottom:0;padding:12px 6px 4px;font-size:12px;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumb.on{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.thumb .x{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:13px;line-height:1;display:none}
+.thumb:hover .x{display:block}
+.add{display:flex;gap:6px;padding:0 12px 10px;flex-wrap:wrap}
+.add input[type=text]{flex:1;min-width:140px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+.settings{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);font-size:13px}
+.settings label{color:var(--muted)}
+.settings input{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px;width:100%;font-family:var(--f-mono);font-size:12px}
+
+
+/* Connexion */
+.login{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:var(--ink)}
+.login-card{width:min(360px,100%);display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.login-card h1{margin:0;font:700 22px var(--f-display);letter-spacing:.06em;color:var(--gold)}
+.login-card p{margin:0 0 8px;color:var(--muted);font-size:14px}
+.login-card label{font-size:13px;color:var(--muted)}
+.login-card input{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+.login-card .btn{margin-top:8px;padding:9px}
+.login-err{color:var(--danger)!important;margin:4px 0 0!important}
+.tag.sync.ok{color:var(--ok);border-color:rgba(111,191,138,.4)}
+.tag.sync.err{color:var(--danger);border-color:rgba(217,112,95,.5)}
+/* Salon Discord */
+.dc-row{display:grid;grid-template-columns:1fr 150px;gap:6px}
+.settings input.dc-label{font-family:var(--f-body);font-size:13px}
+/* Carte & notes partagées */
+.split{display:grid;grid-template-columns:1fr 1fr}
+.split .half{position:relative;min-width:0}
+.split .half + .half{border-left:1px solid var(--line)}
+.split[data-mode="map"]{grid-template-columns:1fr}
+.split[data-mode="map"] #notes,.split[data-mode="notes"] #miniObr{display:none}
+.split[data-mode="notes"]{grid-template-columns:1fr}
+.split[data-mode="notes"] .half{border-left:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{background:var(--panel-2);border:0;padding:4px 10px;font-size:12px;color:var(--muted)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--gold-soft);color:var(--gold)}
+.settings input.cap-in{font-family:var(--f-body);font-size:14px}
+.settings input:disabled{opacity:.5}
+
+/* ---------- Spotify ---------- */
+.music{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:8px 14px}
+.music .ctl{display:flex;gap:6px}
+.music .ctl button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);display:grid;place-items:center}
+.music .ctl button.play{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.music .now{min-width:0}
+.music .now .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music .now .a{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;max-width:220px}
+.tracks{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.tracks button{flex:none;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap}
+.tracks button.on{border-color:var(--gold);color:var(--gold)}
+.vol{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.vol input{width:90px;accent-color:var(--gold)}
+
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+
+
+/* ================= Thème Parchemin =================
+   Vélin vieilli, encre sépia, accent cire rouge, filets dorés doubles. */
+:root[data-skin="parchemin"]{
+  --ink:#d9c6a0; --panel:#f1e4c6; --panel-2:#e7d5ae; --line:#a88a58;
+  --text:#2c1d0e; --muted:#6f5634; --gold:#8e2b1d; --gold-soft:rgba(142,43,29,.12);
+  --blurple:#4f5a8f; --well:#2a1f14; --code-bg:#dccaa0; --on-gold:#f6ead0; --msg:#3a2a18;
+  --f-display:"IM Fell English SC", "Cinzel", Georgia, serif;
+  --f-body:"Crimson Pro", "Iowan Old Style", Georgia, serif;
+  --r:4px; color-scheme:light;
+}
+[data-skin="parchemin"] body{
+  font-size:16px;
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(90,55,20,.35) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .08  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    #cdb68a;
+}
+[data-skin="parchemin"] .pane,
+[data-skin="parchemin"] .banner,
+[data-skin="parchemin"] .music{
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='4' seed='3'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .3  0 0 0 0 .12  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse at 50% 45%, #f6ebd0 30%, #e6d1a4 100%);
+  border:1px solid var(--line);
+  box-shadow:inset 0 0 0 3px var(--panel), inset 0 0 0 4px rgba(168,138,88,.55), 0 2px 10px rgba(60,35,10,.25);
+}
+[data-skin="parchemin"] .pane-h{border-bottom:1px solid var(--line);background:linear-gradient(transparent 60%, rgba(168,138,88,.12))}
+[data-skin="parchemin"] .pane-h h2{font:400 15px/1 var(--f-display);letter-spacing:.08em;text-transform:none;color:var(--text)}
+[data-skin="parchemin"] .pane-h h2::before,[data-skin="parchemin"] .pane-h h2::after{content:"❦";color:var(--gold);font-size:12px;margin:0 7px;opacity:.8}
+[data-skin="parchemin"] .pane-h h2::before{display:inline-block;transform:scaleX(-1)}
+[data-skin="parchemin"] .banner .lbl{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:.02em;text-transform:none;color:var(--muted)}
+[data-skin="parchemin"] .banner .val{font-size:19px}
+[data-skin="parchemin"] .banner .cell.lieu .val{font-size:22px;color:var(--gold)}
+[data-skin="parchemin"] .banner .cell.quest{background:linear-gradient(90deg,rgba(142,43,29,.1),transparent 75%)}
+[data-skin="parchemin"] .banner .cell.quest .val{font:italic 500 18px/1.2 var(--f-body)}
+[data-skin="parchemin"] .tag{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:0;text-transform:none;background:transparent}
+[data-skin="parchemin"] .tag.ex{color:var(--gold);border-color:rgba(142,43,29,.45)}
+[data-skin="parchemin"] .btn{background:#ead9b3;border-color:var(--line)}
+[data-skin="parchemin"] .btn.primary{background:var(--gold);border-color:#6d1f14;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+[data-skin="parchemin"] .empty b{font-size:21px}
+[data-skin="parchemin"] .scene{box-shadow:inset 0 0 40px rgba(0,0,0,.6)}
+[data-skin="parchemin"] .scene .cap{font-size:21px;color:#f3e6c8}
+[data-skin="parchemin"] .embed{background:rgba(255,248,230,.55);border:1px solid rgba(168,138,88,.5);border-left:4px solid var(--blurple)}
+[data-skin="parchemin"] .msg .who{font-family:var(--f-display);font-weight:400;font-size:16px}
+[data-skin="parchemin"] .av{color:#2c1d0e;box-shadow:0 0 0 1px var(--line)}
+[data-skin="parchemin"] .thumb{border-radius:3px}
+[data-skin="parchemin"] .thumb .n{color:#f3e6c8}
+[data-skin="parchemin"] .settings input,[data-skin="parchemin"] .add input[type=text],[data-skin="parchemin"] .music select{background:rgba(255,248,230,.6)}
+[data-skin="parchemin"] .seg button{background:transparent}
+[data-skin="parchemin"] .crit{color:#2f6b3c}
+[data-skin="parchemin"] .toast{background:var(--panel)}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{height:auto}
+  .main{grid-template-columns:1fr}
+  .col.left{min-height:60vh}
+  .col.right{grid-template-rows:50vh 50vh}
+  .banner{flex-wrap:wrap}
+  .banner .cell{flex:1 1 40%;border-bottom:1px solid var(--line)}
+  .music{grid-template-columns:auto 1fr;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- Bandeau d'ambiance -->
+  <header class="banner" id="banner"></header>
+
+  <main class="main">
+    <!-- Colonne gauche : Owlbear (joueurs) ou poste de commande (admin) -->
+    <section class="col left" id="left"></section>
+
+    <!-- Colonne droite : image + Discord -->
+    <section class="col right">
+      <div class="pane">
+        <div class="pane-h"><h2>Scène</h2><span class="sp"></span><span class="tag" id="sceneTag" hidden>Aperçu joueurs</span></div>
+        <div class="pane-b"><div class="scene" id="scene"></div></div>
+      </div>
+      <div class="pane">
+        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag ex">Exemple · bot non connecté</span></div>
+        <div class="pane-b"><div class="feed" id="feed"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barre Spotify (admin uniquement) -->
+  <footer class="music" id="music" hidden></footer>
+</div>
+<div class="toast" id="toast"></div>
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm">
+    <h1>Table du MJ</h1>
+    <p>Connexion réservée au maître du jeu.</p>
+    <label for="lgEmail">E-mail</label><input id="lgEmail" type="email" autocomplete="username" required>
+    <label for="lgPass">Mot de passe</label><input id="lgPass" type="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Se connecter</button>
+    <p class="login-err" id="lgErr" hidden></p>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============ État partagé ============ */
+const KEY = 'table-mj-state-v1';
+const isAdmin = location.hash.replace('#','') === 'admin';
+
+function svgScene(title, a, b, motif){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>
+  <defs><radialGradient id='g' cx='50%' cy='40%' r='75%'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></radialGradient></defs>
+  <rect width='800' height='600' fill='url(#g)'/>${motif}
+  <text x='400' y='560' text-anchor='middle' font-family='Georgia' font-size='20' fill='rgba(255,255,255,.45)' letter-spacing='4'>IMAGE D'EXEMPLE</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const SAMPLE_IMAGES = [
+  {id:'ex1', name:'Taverne du Sanglier Noir', src:svgScene('', '#7a4a22', '#1a0f08',
+    "<rect x='120' y='300' width='560' height='22' fill='#3a2412'/><circle cx='400' cy='170' r='60' fill='#f2b24d' opacity='.55'/><circle cx='400' cy='170' r='26' fill='#ffd78a'/>")},
+  {id:'ex2', name:'Forêt de Brumesombre', src:svgScene('', '#2f4a3a', '#0b1410',
+    "<polygon points='150,520 220,220 290,520' fill='#14261c'/><polygon points='330,520 420,160 510,520' fill='#0f1f16'/><polygon points='540,520 610,250 680,520' fill='#14261c'/><rect y='420' width='800' height='120' fill='#cfd8d0' opacity='.12'/>")},
+  {id:'ex3', name:'Maître Aldric, alchimiste', src:svgScene('', '#3b3560', '#100e1c',
+    "<circle cx='400' cy='230' r='80' fill='#1c1930'/><path d='M260 520 Q400 300 540 520Z' fill='#1c1930'/><circle cx='520' cy='380' r='22' fill='#6fe0b0' opacity='.7'/>")},
+  {id:'ex4', name:'Ruines de Kar-Dûn', src:svgScene('', '#5a5a6a', '#121218',
+    "<rect x='180' y='240' width='50' height='280' fill='#22222c'/><rect x='300' y='300' width='50' height='220' fill='#22222c'/><rect x='560' y='200' width='50' height='320' fill='#22222c'/><rect x='160' y='220' width='200' height='26' fill='#22222c'/>")}
+];
+
+const DEFAULT = {
+  owlbearUrl:'',
+  notesUrl:'',
+  discord:{url:'', guild:'', channel:'', label:'table-de-jeu'},
+  images: SAMPLE_IMAGES,
+  current:'ex1',
+  ambiance:{lieu:'Valbrune', jour:'3e jour de Flamerègne', heure:'Crépuscule', meteo:'Pluie fine', objectif:"Retrouver l'apprenti disparu de Maître Aldric"},
+  music:{playlist:0, track:0, playing:false, volume:60},
+  split:'both',
+  skin:'nuit'
+};
+
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) return Object.assign(structuredClone(DEFAULT), s); }catch(e){}
+  return structuredClone(DEFAULT);
+}
+let state = load();
+let bc = null; try{ bc = new BroadcastChannel('table-mj'); }catch(e){}
+
+/* ---- Synchronisation : Supabase si configuré, sinon entre onglets du même navigateur ---- */
+const CFG = window.TABLE_CONFIG || {};
+const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
+  ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
+const PUBLIC_KEYS  = ['owlbearUrl','images','current','ambiance','skin','discord']; // visibles par les joueurs
+const PRIVATE_KEYS = ['notesUrl','split','music'];                                   // réservés au MJ
+const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
+let session = null, pushTimer = null;
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  if(sb){
+    if(!session) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, 250);   // regroupe les frappes rapides
+    setSync('pending');
+  } else {
+    bc && bc.postMessage(state);
+  }
+}
+async function push(){
+  const now = new Date().toISOString();
+  const [a, b] = await Promise.all([
+    sb.from('etat').update({data: pick(state, PUBLIC_KEYS), updated_at: now}).eq('id','public'),
+    sb.from('etat').update({data: pick(state, PRIVATE_KEYS), updated_at: now}).eq('id','prive')
+  ]);
+  if(a.error || b.error){ setSync('error'); toast('Synchronisation impossible : ' + (a.error||b.error).message); }
+  else setSync('ok');
+}
+function setSync(st){
+  const el = document.getElementById('syncTag'); if(!el) return;
+  const map = {ok:['En ligne · synchronisé','ok'], pending:['Envoi…',''], error:['Hors ligne · non synchronisé','err'], local:['Mode local (non publié)','']};
+  const [txt, cls] = map[st] || map.local;
+  el.textContent = txt; el.className = 'tag sync ' + cls;
+}
+bc && (bc.onmessage = e => receive(e.data));
+addEventListener('storage', e => { if(e.key===KEY && e.newValue){ try{ receive(JSON.parse(e.newValue)); }catch(_){} } });
+addEventListener('hashchange', () => location.reload());
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
+
+/* ============ Bandeau ============ */
+const FIELDS = [['lieu','Lieu'],['jour','Jour'],['heure','Heure'],['meteo','Météo'],['objectif','Objectif actuel']];
+function renderBanner(){
+  const a = state.ambiance;
+  $('#banner').innerHTML = FIELDS.map(([k,l]) => {
+    const cls = k==='objectif' ? 'quest' : k;
+    const v = isAdmin
+      ? `<input class="val" id="amb-${k}" value="${esc(a[k])}" placeholder="${l}…">`
+      : `<div class="val">${esc(a[k]) || '—'}</div>`;
+    return `<div class="cell ${cls}"><div class="lbl">${l}</div>${v}</div>`;
+  }).join('');
+  if(isAdmin){
+    FIELDS.forEach(([k]) => $('#amb-'+k).addEventListener('input', e => { state.ambiance[k]=e.target.value; save(); }));
+  }
+}
+
+/* ============ Scène ============ */
+function renderScene(){
+  const img = state.images.find(i => i.id===state.current);
+  $('#scene').innerHTML = img
+    ? `<img src="${esc(img.src)}" alt="${esc(img.name)}"><div class="cap">${esc(img.name)}</div>`
+    : `<div class="empty"><div><b>Aucune image</b>Le MJ n'a rien affiché pour l'instant.</div></div>`;
+  $('#sceneTag').hidden = !isAdmin;
+}
+
+/* ============ Discord (exemple Avrae) ============ */
+const FEED = [
+  {who:'Kaelen', c:'#9fc3e8', when:'20:41', txt:"J'attaque le gobelin avec mon épée longue"},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:41', embed:{t:'Kaelen attaque avec Épée longue !', lines:[
+    ['Toucher','<code>1d20 (17) + 5</code> = <b>22</b>'],['Dégâts','<code>1d8 (6) + 3</code> = <b>9</b> tranchants'],['Gobelin 2','<b>&lt;-2/7 PV&gt;</b> Inconscient']]}},
+  {who:'Mira', c:'#e0a3c3', when:'20:42', txt:'!cast "bouclier de la foi" -t Kaelen'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:42', embed:{t:'Mira lance Bouclier de la foi !', lines:[
+    ['Effet','Kaelen gagne +2 CA (concentration, 10 min)'],['Emplacements','Niv. 1 : ◉◉◯◯']]}},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:43', embed:{t:'Initiative · Round 2', lines:[
+    ['En cours','<b>Gobelin 1</b> &lt;7/7 PV&gt;'],['Suivant','Thorin (14)'],['Puis','Mira (11), Kaelen (9)']]}},
+  {who:'Thorin', c:'#e8c39f', when:'20:44', txt:'!check perception'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:44', embed:{t:'Thorin fait un test de Perception !', lines:[
+    ['Résultat','<code>1d20 (<span class="crit">20</span>) + 4</code> = <b>24</b>']]}}
+];
+function renderFeed(){
+  $('#feed').innerHTML = FEED.map(m => `
+    <div class="msg"><div class="av" style="background:${m.c}">${m.who[0]}</div><div style="min-width:0">
+      <div class="who">${esc(m.who)}${m.bot?'<span class="bot">BOT</span>':''}<span class="when">${m.when}</span></div>
+      ${m.txt?`<div class="txt">${esc(m.txt)}</div>`:''}
+      ${m.embed?`<div class="embed"><div class="t">${esc(m.embed.t)}</div><div class="f">${m.embed.lines.map(([k,v])=>`<div><span class="k">${k}</span>${v}</div>`).join('')}</div></div>`:''}
+    </div></div>`).join('');
+  const f=$('#feed'); f.scrollTop=f.scrollHeight;
+}
+
+/* ============ Colonne gauche ============ */
+function renderLeft(){
+  const left = $('#left');
+  if(!isAdmin){
+    left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Carte</h2><span class="sp"></span></div><div class="pane-b" id="obr"></div></div>`;
+    $('#obr').innerHTML = state.owlbearUrl
+      ? `<iframe class="fill" src="${esc(state.owlbearUrl)}" allow="clipboard-read; clipboard-write; fullscreen" title="Owlbear Rodeo"></iframe>`
+      : `<div class="empty"><div><b>Carte non configurée</b>Le MJ doit coller le lien de la room Owlbear Rodeo dans la vue admin.</div></div>`;
+    return;
+  }
+  left.classList.add('console');
+  left.innerHTML = `
+    <div class="pane">
+      <div class="pane-h"><h2>Bibliothèque d'images</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
+        <a class="btn" href="#table" target="_blank" rel="noopener">Ouvrir la vue joueurs ↗</a></div>
+      <div class="lib" id="lib"></div>
+      <div class="add">
+        <input type="text" id="imgUrl" placeholder="Coller le lien d'une image (https://…)">
+        <button class="btn primary" id="addUrl">Ajouter</button>
+        <label class="btn" for="imgFile">Importer depuis l'ordinateur</label>
+        <input type="file" id="imgFile" accept="image/*" multiple hidden>
+      </div>
+      <div class="settings">
+        <label>Thème</label><div class="seg" role="group" aria-label="Thème" style="justify-self:start">
+          <button data-skin="nuit" class="${state.skin!=='parchemin'?'on':''}">Nuit</button>
+          <button data-skin="parchemin" class="${state.skin==='parchemin'?'on':''}">Parchemin</button></div>
+        <label for="capInput">Titre affiché</label><input id="capInput" class="cap-in" placeholder="Sélectionnez une image">
+        <label for="obrUrl">Room Owlbear</label><input id="obrUrl" placeholder="https://www.owlbear.rodeo/room/…" value="${esc(state.owlbearUrl)}">
+        <label for="notesUrl">Notes (Google Doc)</label><input id="notesUrl" placeholder="https://docs.google.com/document/d/…" value="${esc(state.notesUrl)}">
+        <label for="dcUrl">Salon Discord</label><div class="dc-row"><input id="dcUrl" placeholder="Lien du salon : https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Nom affiché" value="${esc(state.discord.label)}"></div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="pane-h"><h2>Carte & notes</h2><span class="sp"></span>
+        <div class="seg" role="group" aria-label="Disposition">
+          <button data-split="map" class="${state.split==='map'?'on':''}">Carte</button>
+          <button data-split="both" class="${state.split==='both'?'on':''}">Les deux</button>
+          <button data-split="notes" class="${state.split==='notes'?'on':''}">Notes</button>
+        </div>
+        ${state.owlbearUrl?`<a class="btn" href="${esc(state.owlbearUrl)}" target="_blank" rel="noopener">Owlbear ↗</a>`:''}
+        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener">Google Docs ↗</a>`:''}</div>
+      <div class="pane-b split" data-mode="${state.split}">
+        <div class="half" id="miniObr">${state.owlbearUrl
+          ? `<iframe class="fill" src="${esc(state.owlbearUrl)}" allow="clipboard-read; clipboard-write; fullscreen" title="Owlbear Rodeo"></iframe>`
+          : `<div class="empty"><div><b>Carte non liée</b>Collez le lien de la room Owlbear ci-dessus.</div></div>`}</div>
+        <div class="half" id="notes">${state.notesUrl
+          ? `<iframe class="fill" src="${esc(state.notesUrl)}" title="Notes de session"></iframe>`
+          : `<div class="empty"><div><b>Aucun document lié</b>Collez le lien de votre Google Doc ci-dessus.</div></div>`}</div>
+      </div>
+    </div>`;
+  renderLib();
+  $('#addUrl').onclick = () => {
+    const url = $('#imgUrl').value.trim(); if(!url) return toast("Collez d'abord le lien d'une image.");
+    const name = decodeURIComponent(url.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ') || 'Nouvelle image';
+    addImage(name, url);
+    $('#imgUrl').value='';
+  };
+  $('#imgFile').onchange = e => {
+    [...e.target.files].forEach(f => uploadImage(f));
+    e.target.value='';
+  };
+  $('#notesUrl').onchange = e => { state.notesUrl=e.target.value.trim(); save(); renderLeft(); };
+  $('#dcUrl').onchange = e => {
+    const url = e.target.value.trim();
+    const m = url.match(/channels\/(\d+|@me)\/(\d+)/);
+    if(url && !m){ toast('Lien non reconnu : clic droit sur le salon > Copier le lien'); return; }
+    state.discord = Object.assign(state.discord, {url, guild:m?m[1]:'', channel:m?m[2]:''});
+    save(); renderChannel(); toast(url ? 'Salon Discord enregistré' : 'Salon Discord retiré');
+  };
+  $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
+  $('#obrUrl').onchange = e => { state.owlbearUrl=e.target.value.trim(); save(); renderLeft(); toast('Room Owlbear enregistrée'); };
+  document.querySelectorAll('[data-split]').forEach(b => b.onclick = () => {
+    state.split = b.dataset.split; save();
+    document.querySelector('.split').dataset.mode = state.split;
+    document.querySelectorAll('[data-split]').forEach(x => x.classList.toggle('on', x===b));
+  });
+  document.querySelectorAll('button[data-skin]').forEach(b => b.onclick = () => {
+    state.skin = b.dataset.skin; save(); applySkin();
+    document.querySelectorAll('button[data-skin]').forEach(x => x.classList.toggle('on', x===b));
+  });
+  $('#capInput').oninput = e => {
+    const img = state.images.find(i => i.id===state.current); if(!img) return;
+    img.name = e.target.value; save(); renderScene();
+    const n = document.querySelector('.thumb.on .n'); if(n) n.textContent = img.name;
+  };
+}
+async function uploadImage(f){
+  const name = f.name.replace(/\.[^.]+$/,'');
+  if(!sb){ const r=new FileReader(); r.onload=()=>addImage(name, r.result); r.readAsDataURL(f); return; }
+  toast('Envoi de « ' + name + ' »…');
+  const path = Date.now() + '-' + f.name.normalize('NFD').replace(/[^\w.-]+/g,'_');
+  const { error } = await sb.storage.from('scenes').upload(path, f, {contentType: f.type, upsert:false});
+  if(error) return toast('Envoi impossible : ' + error.message);
+  const { data } = sb.storage.from('scenes').getPublicUrl(path);
+  addImage(name, data.publicUrl, path);
+}
+function addImage(name, src, path){
+  const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  state.images.push(path ? {id,name,src,path} : {id,name,src}); save(); renderLib(); toast('Image ajoutée : '+name);
+}
+function renderLib(){
+  const cur = state.images.find(i => i.id===state.current), ci = $('#capInput');
+  if(ci){ ci.value = cur ? cur.name : ''; ci.disabled = !cur; }
+  $('#lib').innerHTML = state.images.map(i => `
+    <button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Afficher aux joueurs">
+      <img src="${esc(i.src)}" alt=""><span class="n">${esc(i.name)}</span>
+      <span class="x" data-del="${i.id}" role="button" aria-label="Supprimer">✕</span></button>`).join('')
+    || '<p style="color:var(--muted);margin:0">Bibliothèque vide.</p>';
+  $('#lib').querySelectorAll('.thumb').forEach(b => b.onclick = e => {
+    const del = e.target.dataset.del;
+    if(del){
+      const img = state.images.find(i=>i.id===del);
+      if(sb && img && img.path) sb.storage.from('scenes').remove([img.path]);
+      state.images = state.images.filter(i=>i.id!==del); if(state.current===del) state.current=null;
+    }
+    else { state.current = b.dataset.id===state.current ? null : b.dataset.id; }
+    save(); renderLib(); renderScene();
+  });
+}
+
+/* ============ Spotify (maquette) ============ */
+const PLAYLISTS = [
+  {name:'Exploration', tracks:[['Brumes du matin','Ambiance'],['Sentier oublié','Ambiance'],['Route marchande','Ambiance']]},
+  {name:'Combat', tracks:[['Choc des lames','Épique'],['Horde gobeline','Épique'],['Le dernier rempart','Épique']]},
+  {name:'Taverne', tracks:[['Chope pleine','Folk'],['Danse du ménestrel','Folk']]},
+  {name:'Donjon', tracks:[['Échos de pierre','Sombre'],['Ce qui rampe','Sombre']]}
+];
+function renderMusic(){
+  const m = state.music, pl = PLAYLISTS[m.playlist], tr = pl.tracks[m.track];
+  const el = $('#music'); el.hidden=false;
+  el.innerHTML = `
+    <div class="ctl">
+      <button id="mPrev" aria-label="Précédent">⏮</button>
+      <button id="mPlay" class="play" aria-label="${m.playing?'Pause':'Lecture'}">${m.playing?'⏸':'▶'}</button>
+      <button id="mNext" aria-label="Suivant">⏭</button>
+    </div>
+    <div class="now" style="width:210px"><div class="t">${esc(tr[0])}</div><div class="a">${esc(pl.name)} · ${esc(tr[1])}</div></div>
+    <div style="display:flex;gap:10px;align-items:center;min-width:0">
+      <select id="mPl" aria-label="Playlist">${PLAYLISTS.map((p,i)=>`<option value="${i}" ${i===m.playlist?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+      <div class="tracks">${pl.tracks.map((t,i)=>`<button data-t="${i}" class="${i===m.track?'on':''}">${esc(t[0])}</button>`).join('')}</div>
+    </div>
+    <div class="vol"><span class="tag ex">Exemple · Spotify non connecté</span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="${m.volume}" aria-label="Volume"></div>`;
+  const set = (patch) => { Object.assign(state.music, patch); save(); renderMusic(); };
+  $('#mPlay').onclick = () => set({playing:!m.playing});
+  $('#mPrev').onclick = () => set({track:(m.track-1+pl.tracks.length)%pl.tracks.length, playing:true});
+  $('#mNext').onclick = () => set({track:(m.track+1)%pl.tracks.length, playing:true});
+  $('#mPl').onchange = e => set({playlist:+e.target.value, track:0});
+  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => set({track:+b.dataset.t, playing:true}));
+  $('#mVol').oninput = e => { state.music.volume = +e.target.value; save(); };
+}
+
+/* ============ Rendu ============ */
+function renderChannel(){
+  const d = state.discord || {};
+  $('#chanTitle').textContent = '#' + (d.label || 'salon');
+}
+function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
+function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
+document.title = isAdmin ? 'Table du MJ · Admin' : 'Table du MJ';
+function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
+
+async function boot(){
+  if(!sb){ renderAll(); return; }                       // mode local
+  if(isAdmin){
+    session = (await sb.auth.getSession()).data.session;
+    if(!session){ showLogin(); return; }
+    const { data, error } = await sb.from('etat').select('id,data');
+    if(error){ toast('Lecture impossible : ' + error.message); renderAll(); setSync('error'); return; }
+    const pub = data.find(r=>r.id==='public')?.data || {}, prv = data.find(r=>r.id==='prive')?.data || {};
+    const firstRun = !Object.keys(pub).length;
+    state = Object.assign(structuredClone(DEFAULT), firstRun ? {} : pub, prv);
+    renderAll();
+    if(firstRun) push();                                  // publie l'état de départ
+  } else {
+    state = structuredClone(DEFAULT); state.images = []; state.current = null;
+    const { data } = await sb.from('etat').select('data').eq('id','public').maybeSingle();
+    if(data && data.data) Object.assign(state, data.data);
+    renderAll();
+    sb.channel('table').on('postgres_changes', {event:'UPDATE', schema:'public', table:'etat', filter:'id=eq.public'},
+      payload => receive(payload.new.data)).subscribe();
+  }
+}
+function showLogin(){
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email: $('#lgEmail').value.trim(), password: $('#lgPass').value });
+    if(error){ const er=$('#lgErr'); er.textContent = 'Connexion refusée : vérifiez l\'e-mail et le mot de passe.'; er.hidden=false; return; }
+    location.reload();
+  };
+}
+boot();
+</script>
+</body>
+</html>
