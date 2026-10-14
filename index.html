@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Table du MJ</title>
+<title>GM Table</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;500;600;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Mise en page : bandeau d'ambiance en haut, carte Owlbear à gauche (pleine hauteur), image + Discord à droite.
+/* Mise en page : bandeau d'ambiance en haut, carte de combat à gauche (pleine hauteur), image + Discord à droite.
    Vue admin : même ossature, la carte est remplacée par le poste de commande, barre Spotify en bas. */
 :root{
   --ink:#0f1318;        /* fond général, encre bleu nuit */
@@ -136,7 +136,7 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .split .half{position:relative;min-width:0}
 .split .half + .half{border-left:1px solid var(--line)}
 .split[data-mode="map"]{grid-template-columns:1fr}
-.split[data-mode="map"] #notes,.split[data-mode="notes"] #miniObr{display:none}
+.split[data-mode="map"] #notes,.split[data-mode="notes"] #miniMap{display:none}
 .split[data-mode="notes"]{grid-template-columns:1fr}
 .split[data-mode="notes"] .half{border-left:0}
 .seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
@@ -164,6 +164,74 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 
+
+/* ---------- Carte de combat ---------- */
+.bm{position:absolute;inset:0;overflow:hidden;background:var(--well);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.bm[data-tool="ruler"]{cursor:crosshair}
+.bm-world{position:absolute;left:0;top:0;transform-origin:0 0}
+.bm-img{display:block;width:100%;height:100%;max-width:none;pointer-events:none}
+.bm-grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(to right, rgba(0,0,0,.45) var(--gw,1px), transparent var(--gw,1px)),linear-gradient(to bottom, rgba(0,0,0,.45) var(--gw,1px), transparent var(--gw,1px))}
+.bm.far .tok-n{display:none}
+.bm.far .tok:hover .tok-n,.bm.far .tok.sel .tok-n{display:block}
+.bm-ruler{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.bm-tokens{position:absolute;inset:0}
+.tok{position:absolute;pointer-events:auto;display:grid;place-items:center}
+.tok.mov{cursor:grab}
+.tok.drag{cursor:grabbing;z-index:5;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))}
+.tok-c{width:88%;height:88%;border-radius:50%;background:var(--tc);border:calc(3px * var(--inv,1)) solid #f3ead8;
+  box-shadow:0 2px 6px rgba(0,0,0,.6);display:grid;place-items:center;overflow:hidden;color:#fff;
+  font:700 calc(18px * var(--inv,1)) var(--f-body);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.tok-c img{width:100%;height:100%;object-fit:cover}
+.t-ennemi .tok-c{border-color:#e9a091}
+.t-pnj .tok-c{border-color:#ecd38f}
+.tok.me .tok-c{box-shadow:0 0 0 calc(3px * var(--inv,1)) var(--gold),0 2px 6px rgba(0,0,0,.6)}
+.tok.sel .tok-c{box-shadow:0 0 0 calc(4px * var(--inv,1)) var(--gold),0 2px 10px rgba(0,0,0,.6)}
+.tok.hid{opacity:.45}.tok.hid .tok-c{border-style:dashed}
+.tok-n{position:absolute;left:50%;top:100%;transform:translate(-50%,-30%);white-space:nowrap;pointer-events:none;
+  font:600 calc(12px * var(--inv,1)) var(--f-body);color:#fff;background:rgba(0,0,0,.65);padding:calc(1px * var(--inv,1)) calc(6px * var(--inv,1));border-radius:calc(4px * var(--inv,1))}
+.bm-tools{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.bm-tools button{width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:var(--muted)}
+.bm-tools button:hover{color:var(--text);background:var(--panel-2)}
+.bm-tools button.on{background:var(--gold-soft);color:var(--gold)}
+.bm-sep{height:1px;background:var(--line);margin:2px 4px}
+.bm-measure{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--gold);color:var(--text);border-radius:6px;padding:3px 8px;font:600 13px var(--f-body);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bm-panel{position:absolute;top:10px;right:10px;width:min(280px,calc(100% - 70px));max-height:calc(100% - 20px);overflow-y:auto;z-index:10;
+  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.5);padding:10px 12px;display:grid;gap:6px;font-size:13px;cursor:default}
+.bm-panel label{color:var(--muted);display:flex;justify-content:space-between}
+.bm-panel input:not([type=checkbox]):not([type=range]):not([type=color]),.bm-panel select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;width:100%;min-width:0}
+.bm-panel input[type=range]{accent-color:var(--gold);width:100%}
+.bm-panel input[type=color]{width:100%;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);padding:2px}
+.bm-panel .bm-check{color:var(--text);justify-content:flex-start;gap:8px;align-items:center}
+.bm-panel .seg{justify-self:start}
+.bm-ph{position:sticky;top:-10px;z-index:1;background:var(--panel);margin:-10px -12px 0;padding:10px 12px 6px;display:flex;align-items:center;justify-content:space-between;font-family:var(--f-display);letter-spacing:.06em}
+.bm-x{border:0;background:transparent;color:var(--muted);font-size:14px}
+.bm-row{display:flex;gap:6px}
+.bm-hint{margin:0;color:var(--muted);font-size:12px}
+.bm-del{color:var(--danger);margin-top:4px}
+.bm-panel output{color:var(--text);font-variant-numeric:tabular-nums}
+.who-list{display:grid;gap:8px}
+.bm-lib{width:min(320px,calc(100% - 70px))}
+.lib-g{display:grid;gap:6px}
+.lib-gt{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.lib-it{position:relative}
+.lib-place{width:100%;display:grid;justify-items:center;gap:4px;padding:8px 4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+.lib-place:hover{border-color:var(--gold)}
+.lib-c{width:38px;height:38px;border-radius:50%;background:var(--tc);border:2px solid #f3ead8;display:grid;place-items:center;overflow:hidden;color:#fff;font:700 13px var(--f-body);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.lib-c img{width:100%;height:100%;object-fit:cover}
+.lib-c.big{width:84px;height:84px;font-size:26px;border-width:3px}
+.lib-n{font-size:12px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-ed{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:var(--panel);color:var(--muted);font-size:12px;opacity:0}
+.lib-it:hover .lib-ed,.lib-ed:focus-visible{opacity:1}
+.lib-prev{display:grid;place-items:center;padding:6px 0}
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
+.modal-card{width:min(360px,100%);display:grid;gap:10px;background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);padding:22px;text-align:center}
+.modal-card h2{margin:0;font:700 20px var(--f-display);color:var(--gold);letter-spacing:.04em}
+.modal-card p{margin:0;color:var(--muted);font-size:14px}
+.modal-card .btn{padding:9px;text-align:center}
+.btn.who{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:15px;text-align:left}
+.btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
 
 /* ================= Thème Parchemin =================
    Vélin vieilli, encre sépia, accent cire rouge, filets dorés doubles. */
@@ -237,17 +305,17 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
   <header class="banner" id="banner"></header>
 
   <main class="main">
-    <!-- Colonne gauche : Owlbear (joueurs) ou poste de commande (admin) -->
+    <!-- Colonne gauche : carte (joueurs) ou poste de commande (admin) -->
     <section class="col left" id="left"></section>
 
     <!-- Colonne droite : image + Discord -->
     <section class="col right">
       <div class="pane">
-        <div class="pane-h"><h2>Scène</h2><span class="sp"></span><span class="tag" id="sceneTag" hidden>Aperçu joueurs</span></div>
+        <div class="pane-h"><h2>Scene</h2><span class="sp"></span><span class="tag" id="sceneTag" hidden>Player preview</span></div>
         <div class="pane-b"><div class="scene" id="scene"></div></div>
       </div>
       <div class="pane">
-        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag ex">Exemple · bot non connecté</span></div>
+        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag ex">Sample · bot not connected</span></div>
         <div class="pane-b"><div class="feed" id="feed"></div></div>
       </div>
     </section>
@@ -257,13 +325,14 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
   <footer class="music" id="music" hidden></footer>
 </div>
 <div class="toast" id="toast"></div>
+<div class="modal" id="modal" hidden></div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
-    <h1>Table du MJ</h1>
-    <p>Connexion réservée au maître du jeu.</p>
-    <label for="lgEmail">E-mail</label><input id="lgEmail" type="email" autocomplete="username" required>
-    <label for="lgPass">Mot de passe</label><input id="lgPass" type="password" autocomplete="current-password" required>
-    <button class="btn primary" type="submit">Se connecter</button>
+    <h1>GM Table</h1>
+    <p>Game Master sign-in only.</p>
+    <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required>
+    <label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Sign in</button>
     <p class="login-err" id="lgErr" hidden></p>
   </form>
 </div>
@@ -279,31 +348,443 @@ function svgScene(title, a, b, motif){
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>
   <defs><radialGradient id='g' cx='50%' cy='40%' r='75%'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></radialGradient></defs>
   <rect width='800' height='600' fill='url(#g)'/>${motif}
-  <text x='400' y='560' text-anchor='middle' font-family='Georgia' font-size='20' fill='rgba(255,255,255,.45)' letter-spacing='4'>IMAGE D'EXEMPLE</text></svg>`;
+  <text x='400' y='560' text-anchor='middle' font-family='Georgia' font-size='20' fill='rgba(255,255,255,.45)' letter-spacing='4'>SAMPLE IMAGE</text></svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 const SAMPLE_IMAGES = [
-  {id:'ex1', name:'Taverne du Sanglier Noir', src:svgScene('', '#7a4a22', '#1a0f08',
+  {id:'ex1', name:'The Black Boar Tavern', src:svgScene('', '#7a4a22', '#1a0f08',
     "<rect x='120' y='300' width='560' height='22' fill='#3a2412'/><circle cx='400' cy='170' r='60' fill='#f2b24d' opacity='.55'/><circle cx='400' cy='170' r='26' fill='#ffd78a'/>")},
-  {id:'ex2', name:'Forêt de Brumesombre', src:svgScene('', '#2f4a3a', '#0b1410',
+  {id:'ex2', name:'Gloommist Forest', src:svgScene('', '#2f4a3a', '#0b1410',
     "<polygon points='150,520 220,220 290,520' fill='#14261c'/><polygon points='330,520 420,160 510,520' fill='#0f1f16'/><polygon points='540,520 610,250 680,520' fill='#14261c'/><rect y='420' width='800' height='120' fill='#cfd8d0' opacity='.12'/>")},
-  {id:'ex3', name:'Maître Aldric, alchimiste', src:svgScene('', '#3b3560', '#100e1c',
+  {id:'ex3', name:'Master Aldric, alchemist', src:svgScene('', '#3b3560', '#100e1c',
     "<circle cx='400' cy='230' r='80' fill='#1c1930'/><path d='M260 520 Q400 300 540 520Z' fill='#1c1930'/><circle cx='520' cy='380' r='22' fill='#6fe0b0' opacity='.7'/>")},
-  {id:'ex4', name:'Ruines de Kar-Dûn', src:svgScene('', '#5a5a6a', '#121218',
+  {id:'ex4', name:'Ruins of Kar-Dûn', src:svgScene('', '#5a5a6a', '#121218',
     "<rect x='180' y='240' width='50' height='280' fill='#22222c'/><rect x='300' y='300' width='50' height='220' fill='#22222c'/><rect x='560' y='200' width='50' height='320' fill='#22222c'/><rect x='160' y='220' width='200' height='26' fill='#22222c'/>")}
 ];
 
+/* ============ Carte de combat ============
+   Monde = pixels de l'image de la carte. Les jetons sont stockés en coordonnées monde (coin haut-gauche).
+   Vue (zoom/position) propre à chaque écran, jamais synchronisée. */
+const ICONS = {
+  move:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>',
+  ruler: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1.5" transform="rotate(-30 12 12)"/><path d="M7.5 9.6l1.2 2M10.6 7.8l1.7 2.9M13.7 6l1.2 2"/></svg>',
+  fit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  add:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>',
+  map:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>'
+};
+
+function sampleMap(){
+  const W = 1400, H = 980;
+  const room = (x,y,w,h) => `<rect x='${x}' y='${y}' width='${w}' height='${h}' fill='#8a7f6c' stroke='#3b342a' stroke-width='10'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>
+    <rect width='${W}' height='${H}' fill='#2a2620'/>
+    ${room(140,140,420,350)}${room(700,70,560,420)}${room(280,630,840,280)}
+    <rect x='560' y='280' width='140' height='70' fill='#8a7f6c'/><rect x='350' y='490' width='70' height='140' fill='#8a7f6c'/><rect x='980' y='490' width='70' height='140' fill='#8a7f6c'/>
+    <circle cx='980' cy='280' r='45' fill='#3a6b8a' opacity='.85'/>
+    <rect x='770' y='140' width='70' height='70' fill='#5a4a35'/><rect x='420' y='700' width='140' height='70' fill='#5a4a35'/>
+    <text x='${W/2}' y='${H-20}' text-anchor='middle' font-family='Georgia' font-size='22' fill='rgba(255,255,255,.35)' letter-spacing='4'>SAMPLE MAP</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const DEFAULT_CARTE = {
+  src: sampleMap(), path: null, w: 1400, h: 980,
+  cell: 70, offX: 0, offY: 0, grid: true,
+  jetons: [
+    {id:'j1', nom:'Kaelen', type:'pj',     couleur:'#5b8fd6', img:'', taille:1, x:210, y:210, visible:true},
+    {id:'j2', nom:'Mira',   type:'pj',     couleur:'#c76fa8', img:'', taille:1, x:280, y:280, visible:true},
+    {id:'j3', nom:'Thorin', type:'pj',     couleur:'#d69a4a', img:'', taille:1, x:210, y:350, visible:true},
+    {id:'j4', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1, x:910, y:210, visible:true},
+    {id:'j5', nom:'Ogre',   type:'ennemi', couleur:'#7a3a2c', img:'', taille:2, x:1050, y:280, visible:false}
+  ]
+};
+const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC'};
+
+const MAP_VIEWS = {};
+let currentMap = null;
+
+function initials(n){ return (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function snap(v, off, cell){ return off + Math.round((v - off) / cell) * cell; }
+
+function mountMap(host, key, opts){
+  const editable = !!opts.editable;
+  host.innerHTML = `
+    <div class="bm" data-tool="move">
+      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><div class="bm-grid"></div><div class="bm-tokens"></div><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="bm-tools" role="toolbar" aria-label="Map tools">
+        <button data-tool="move" class="on" title="Move (map and tokens)" aria-label="Move">${ICONS.move}</button>
+        <button data-tool="ruler" title="Ruler: drag to measure" aria-label="Ruler">${ICONS.ruler}</button>
+        <button data-act="fit" title="Fit map to screen" aria-label="Fit to screen">${ICONS.fit}</button>
+        ${editable ? `<span class="bm-sep"></span>
+        <button data-act="add" title="Token library" aria-label="Token library">${ICONS.add}</button>
+        <button data-act="cfg" title="Map image and grid" aria-label="Map settings">${ICONS.map}</button>` : ''}
+      </div>
+      <div class="bm-measure" hidden></div>
+      <div class="bm-panel" data-panel="cfg" hidden></div>
+      <div class="bm-panel" data-panel="tok" hidden></div>
+      <div class="bm-panel bm-lib" data-panel="lib" hidden></div>
+    </div>`;
+  const root = host.querySelector('.bm'), world = root.querySelector('.bm-world'),
+        img = root.querySelector('.bm-img'), grid = root.querySelector('.bm-grid'),
+        layer = root.querySelector('.bm-tokens'), ruler = root.querySelector('.bm-ruler'),
+        measure = root.querySelector('.bm-measure'),
+        pCfg = root.querySelector('[data-panel=cfg]'), pTok = root.querySelector('[data-panel=tok]'), pLib = root.querySelector('[data-panel=lib]');
+  let view = MAP_VIEWS[key] || null, tool = 'move', dragging = null, selected = null, loadedSrc = null;
+  const C = () => state.carte;
+
+  function apply(){
+    if(!view) return;
+    world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; MAP_VIEWS[key] = view;
+    root.style.setProperty('--inv', 1/view.s);
+    root.style.setProperty('--gw', Math.max(1, 1/view.s) + 'px');          // trait du quadrillage toujours visible
+    root.classList.toggle('far', C().cell * view.s < 34);                   // noms masqués quand les jetons sont minuscules
+  }
+  function fit(){
+    const r = root.getBoundingClientRect(), c = C();
+    if(!r.width || !c.w) return;
+    const s = Math.min(r.width / c.w, r.height / c.h) * 0.96;
+    view = {s, x:(r.width - c.w*s)/2, y:(r.height - c.h*s)/2}; apply();
+  }
+  function toWorld(cx, cy){ const r = root.getBoundingClientRect(); return {x:(cx - r.left - view.x)/view.s, y:(cy - r.top - view.y)/view.s}; }
+
+  function canMove(t){ return editable || (t.type === 'pj' && t.nom === opts.me); }
+
+  function renderGrid(){
+    const c = C();
+    world.style.width = c.w + 'px'; world.style.height = c.h + 'px';
+    grid.hidden = !c.grid;
+    grid.style.backgroundSize = `${c.cell}px ${c.cell}px`;
+    grid.style.backgroundPosition = `${c.offX}px ${c.offY}px`;
+    ruler.setAttribute('viewBox', `0 0 ${c.w} ${c.h}`); ruler.setAttribute('width', c.w); ruler.setAttribute('height', c.h);
+  }
+  function renderTokens(){
+    const c = C();
+    const list = c.jetons.filter(t => editable || t.visible !== false);
+    const keep = new Set(list.map(t => t.id));
+    layer.querySelectorAll('.tok').forEach(el => { if(!keep.has(el.dataset.id)) el.remove(); });
+    list.forEach(t => {
+      let el = layer.querySelector(`.tok[data-id="${CSS.escape(t.id)}"]`);
+      if(!el){ el = document.createElement('div'); el.className = 'tok'; el.dataset.id = t.id; layer.appendChild(el); }
+      if(dragging && dragging.id === t.id) return;           // ne pas contrarier le glisser en cours
+      const size = c.cell * (t.taille || 1);
+      el.style.cssText = `left:${t.x}px;top:${t.y}px;width:${size}px;height:${size}px;--tc:${t.couleur || '#888'}`;
+      el.className = `tok t-${t.type}${t.visible === false ? ' hid' : ''}${canMove(t) ? ' mov' : ''}${selected === t.id ? ' sel' : ''}${t.type==='pj' && t.nom===opts.me ? ' me' : ''}`;
+      el.innerHTML = `<div class="tok-c">${t.img ? `<img src="${esc(t.img)}" alt="" draggable="false">` : `<span>${esc(initials(t.nom))}</span>`}</div><div class="tok-n">${esc(t.nom)}</div>`;
+    });
+  }
+  function render(){
+    const c = C();
+    if(loadedSrc !== c.src){
+      loadedSrc = c.src;
+      img.onload = () => {
+        const nw = img.naturalWidth || c.w, nh = img.naturalHeight || c.h;
+        if(editable && (nw !== c.w || nh !== c.h)){ c.w = nw; c.h = nh; save(); }
+        renderGrid(); if(!view) fit();
+      };
+      img.src = c.src;
+    }
+    renderGrid(); renderTokens();
+    if(!view) requestAnimationFrame(fit); else apply();
+  }
+
+  /* ---- Pointeur : glisser jeton, panoramique, règle, pincement ---- */
+  const pts = new Map(); let pan = null, pinch = null, rulerStart = null, lastLive = 0;
+  root.addEventListener('pointerdown', e => {
+    if(e.target.closest('.bm-tools,.bm-panel')) return;
+    root.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size === 2){ // pincement
+      const [a,b] = [...pts.values()];
+      pinch = {d: Math.hypot(a.x-b.x, a.y-b.y), s: view.s, cx:(a.x+b.x)/2, cy:(a.y+b.y)/2};
+      dragging = null; pan = null; rulerStart = null; return;
+    }
+    const tokEl = e.target.closest('.tok');
+    if(tool === 'ruler'){
+      const w = toWorld(e.clientX, e.clientY), c = C();
+      rulerStart = {x: snap(w.x - c.cell/2, c.offX, c.cell) + c.cell/2, y: snap(w.y - c.cell/2, c.offY, c.cell) + c.cell/2};
+      return;
+    }
+    if(tokEl){
+      const t = C().jetons.find(j => j.id === tokEl.dataset.id);
+      if(t && canMove(t)){
+        const w = toWorld(e.clientX, e.clientY);
+        dragging = {id:t.id, el:tokEl, dx:w.x - t.x, dy:w.y - t.y, sx:e.clientX, sy:e.clientY, moved:false};
+        tokEl.classList.add('drag'); return;
+      }
+    }
+    pan = {x:e.clientX, y:e.clientY, vx:view.x, vy:view.y, moved:false};
+  });
+  root.addEventListener('pointermove', e => {
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pinch && pts.size === 2){
+      const [a,b] = [...pts.values()], d = Math.hypot(a.x-b.x, a.y-b.y);
+      zoomAt(pinch.cx, pinch.cy, (pinch.s * d / pinch.d) / view.s); return;
+    }
+    if(rulerStart){
+      const w = toWorld(e.clientX, e.clientY), c = C();
+      const end = {x: snap(w.x - c.cell/2, c.offX, c.cell) + c.cell/2, y: snap(w.y - c.cell/2, c.offY, c.cell) + c.cell/2};
+      const n = Math.max(Math.abs(end.x - rulerStart.x), Math.abs(end.y - rulerStart.y)) / c.cell;
+      const sw = 4 / view.s;
+      ruler.innerHTML = `<line x1="${rulerStart.x}" y1="${rulerStart.y}" x2="${end.x}" y2="${end.y}" stroke="var(--gold)" stroke-width="${sw}" stroke-dasharray="${sw*3} ${sw*2}" stroke-linecap="round"/>
+        <circle cx="${rulerStart.x}" cy="${rulerStart.y}" r="${sw*2}" fill="var(--gold)"/><circle cx="${end.x}" cy="${end.y}" r="${sw*2}" fill="var(--gold)"/>`;
+      measure.hidden = false;
+      measure.textContent = `${Math.round(n)} square${Math.round(n)>1?'s':''} · ${Math.round(n)*5} ft`;
+      const r = root.getBoundingClientRect();
+      measure.style.left = (e.clientX - r.left + 14) + 'px'; measure.style.top = (e.clientY - r.top + 14) + 'px';
+      return;
+    }
+    if(dragging){
+      if(Math.hypot(e.clientX - dragging.sx, e.clientY - dragging.sy) > 4) dragging.moved = true;
+      const w = toWorld(e.clientX, e.clientY);
+      const x = w.x - dragging.dx, y = w.y - dragging.dy;
+      dragging.el.style.left = x + 'px'; dragging.el.style.top = y + 'px';
+      const now = performance.now();
+      if(now - lastLive > 90){ lastLive = now; opts.onLive && opts.onLive(dragging.id, x, y); }
+      return;
+    }
+    if(pan){
+      if(Math.hypot(e.clientX - pan.x, e.clientY - pan.y) > 4) pan.moved = true;
+      view.x = pan.vx + (e.clientX - pan.x); view.y = pan.vy + (e.clientY - pan.y); apply();
+    }
+  });
+  function endPointer(e){
+    if(!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if(pinch){ if(pts.size < 2) pinch = null; return; }
+    if(rulerStart){ rulerStart = null; ruler.innerHTML = ''; measure.hidden = true; return; }
+    if(dragging){
+      const d = dragging; dragging = null; d.el.classList.remove('drag');
+      const t = C().jetons.find(j => j.id === d.id);
+      if(t){
+        if(d.moved){
+          const c = C(), w = toWorld(e.clientX, e.clientY);
+          t.x = snap(w.x - d.dx, c.offX, c.cell); t.y = snap(w.y - d.dy, c.offY, c.cell);
+          opts.onMove && opts.onMove(t);
+        } else if(editable){ select(t.id); }
+      }
+      renderTokens(); return;
+    }
+    if(pan && !pan.moved && editable && selected){ select(null); }
+    pan = null;
+  }
+  root.addEventListener('pointerup', endPointer);
+  root.addEventListener('pointercancel', endPointer);
+
+  function zoomAt(cx, cy, k){
+    const r = root.getBoundingClientRect(), s = Math.min(6, Math.max(0.08, view.s * k)); k = s / view.s;
+    view.x = (cx - r.left) - ((cx - r.left) - view.x) * k;
+    view.y = (cy - r.top)  - ((cy - r.top)  - view.y) * k;
+    view.s = s; apply();
+  }
+  root.addEventListener('wheel', e => { e.preventDefault(); if(view) zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, {passive:false});
+
+  /* ---- Barre d'outils ---- */
+  root.querySelector('.bm-tools').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.tool){
+      tool = b.dataset.tool; root.dataset.tool = tool;
+      root.querySelectorAll('button[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === tool));
+    }
+    if(b.dataset.act === 'fit') fit();
+    if(b.dataset.act === 'add') toggleLib();
+    if(b.dataset.act === 'cfg') toggleCfg();
+  });
+
+  /* ---- MJ : ajout et édition de jetons ---- */
+  /* Bibliothèque de jetons (modèles réutilisables, réservée au MJ) */
+  const LIB = () => (state.jetonsBiblio = state.jetonsBiblio || []);
+  function tokFace(t){ return t.img ? `<img src="${esc(t.img)}" alt="">` : `<span>${esc(initials(t.nom))}</span>`; }
+  function toggleLib(force){
+    const open = force !== undefined ? force : pLib.hidden;
+    pCfg.hidden = true; pTok.hidden = true; selected = null; renderTokens();
+    pLib.hidden = !open; if(open) renderLib();
+  }
+  function renderLib(){
+    const groups = Object.entries(TYPE_LABEL).map(([k,l]) => {
+      const items = LIB().filter(t => t.type === k);
+      return items.length ? `<div class="lib-g"><div class="lib-gt">${({pj:'Players', ennemi:'Enemies', pnj:'NPCs'})[k]}</div><div class="lib-grid">${items.map(t => `
+        <div class="lib-it"><button class="lib-place" data-place="${esc(t.id)}" title="Place ${esc(t.nom)} on the map">
+          <span class="lib-c" style="--tc:${esc(t.couleur)}">${tokFace(t)}</span><span class="lib-n">${esc(t.nom)}</span></button>
+          <button class="lib-ed" data-edit="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">✎</button></div>`).join('')}</div></div>` : '';
+    }).join('');
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>Token library</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <p class="bm-hint">Click a template to place it on the map.</p>
+      ${groups || '<p class="bm-hint">No templates yet.</p>'}
+      <button class="btn primary" id="libNew">+ New template</button>`;
+    pLib.querySelector('.bm-x').onclick = () => toggleLib(false);
+    pLib.querySelector('#libNew').onclick = () => editModel(null);
+    pLib.querySelectorAll('[data-place]').forEach(b => b.onclick = () => placeModel(b.dataset.place));
+    pLib.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editModel(b.dataset.edit));
+  }
+  function freeSpot(c, x, y){
+    // décale vers la droite puis la ligne suivante tant que la case est occupée
+    for(let i = 0; i < 40; i++){
+      const tx = x + (i % 6) * c.cell, ty = y + Math.floor(i / 6) * c.cell;
+      if(!c.jetons.some(j => j.x === tx && j.y === ty)) return {x:tx, y:ty};
+    }
+    return {x, y};
+  }
+  function uniqueName(base, type){
+    if(type === 'pj') return base;
+    const names = new Set(C().jetons.map(j => j.nom));
+    if(!names.has(base)) return base;
+    let n = 2; while(names.has(base + ' ' + n)) n++;
+    return base + ' ' + n;
+  }
+  function placeModel(id){
+    const m = LIB().find(t => t.id === id); if(!m) return;
+    const c = C(), r = root.getBoundingClientRect(), w = toWorld(r.left + r.width/2, r.top + r.height/2);
+    const spot = freeSpot(c, snap(w.x - c.cell/2, c.offX, c.cell), snap(w.y - c.cell/2, c.offY, c.cell));
+    const t = {id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), nom:uniqueName(m.nom, m.type),
+               type:m.type, couleur:m.couleur, img:m.img || '', taille:m.taille || 1, x:spot.x, y:spot.y, visible: m.type !== 'ennemi' || m.visible !== false};
+    c.jetons.push(t); save(); renderTokens(); toast(t.nom + ' placed on the map');
+  }
+  function editModel(id){
+    const m = id ? LIB().find(t => t.id === id) : {nom:'', type:'ennemi', couleur:'#b84a3c', img:'', taille:1};
+    if(!m) return;
+    const d = Object.assign({}, m);
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>${id ? 'Edit template' : 'New template'}</b><button class="bm-x" aria-label="Back">✕</button></div>
+      <div class="lib-prev"><span class="lib-c big" id="mdPrev" style="--tc:${esc(d.couleur)}">${tokFace(d)}</span></div>
+      <label for="mdNom">Name</label><input id="mdNom" value="${esc(d.nom)}" placeholder="e.g. Goblin, City guard…">
+      <label for="mdType">Type</label>
+      <select id="mdType">${Object.entries(TYPE_LABEL).map(([k,l]) => `<option value="${k}" ${d.type===k?'selected':''}>${l}</option>`).join('')}</select>
+      <label>Size</label>
+      <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(d.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
+      <label for="mdCol">Color</label><input id="mdCol" type="color" value="${esc(d.couleur)}">
+      <label for="mdImg">Image</label>
+      <div class="bm-row"><input id="mdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="mdFile">Upload</label><input id="mdFile" type="file" accept="image/*" hidden></div>
+      <div class="bm-row"><button class="btn primary" id="mdSave">Save</button>${id ? '<button class="btn bm-del" id="mdDel">Delete</button>' : ''}</div>`;
+    const prev = () => { const el = pLib.querySelector('#mdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); };
+    pLib.querySelector('.bm-x').onclick = renderLib;
+    pLib.querySelector('#mdNom').oninput = e => { d.nom = e.target.value; prev(); };
+    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f'}[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
+    pLib.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { d.taille = +b.dataset.sz; pLib.querySelectorAll('[data-sz]').forEach(x => x.classList.toggle('on', x===b)); });
+    pLib.querySelector('#mdCol').oninput = e => { d.couleur = e.target.value; prev(); };
+    pLib.querySelector('#mdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
+    pLib.querySelector('#mdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
+    pLib.querySelector('#mdSave').onclick = () => {
+      if(!d.nom.trim()) return toast('Give the template a name.');
+      d.nom = d.nom.trim();
+      if(id) Object.assign(m, d); else LIB().push(Object.assign(d, {id:'m'+Date.now().toString(36)}));
+      save(); renderLib(); toast('Template saved');
+    };
+    const del = pLib.querySelector('#mdDel');
+    if(del) del.onclick = () => { state.jetonsBiblio = LIB().filter(t => t.id !== id); save(); renderLib(); };
+    setTimeout(() => pLib.querySelector('#mdNom').focus(), 30);
+  }
+  function select(id){
+    selected = id; renderTokens();
+    const t = id && C().jetons.find(j => j.id === id);
+    pCfg.hidden = true; pLib.hidden = true;
+    if(!t){ pTok.hidden = true; return; }
+    pTok.hidden = false;
+    pTok.innerHTML = `
+      <div class="bm-ph"><b>Token</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <label for="tkNom">Name</label><input id="tkNom" value="${esc(t.nom)}">
+      <label for="tkType">Type</label>
+      <select id="tkType">${Object.entries(TYPE_LABEL).map(([k,l]) => `<option value="${k}" ${t.type===k?'selected':''}>${l}</option>`).join('')}</select>
+      <p class="bm-hint" ${t.type==='pj'?'':'hidden'}>The player who picks this name can move this token.</p>
+      <label>Size</label>
+      <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(t.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
+      <label for="tkCol">Color</label><input id="tkCol" type="color" value="${esc(t.couleur || '#888888')}">
+      <label for="tkImg">Image</label>
+      <div class="bm-row"><input id="tkImg" placeholder="Image link (optional)" value="${esc(t.img && !t.img.startsWith('data:') ? t.img : '')}"><label class="btn" for="tkFile">Upload</label><input id="tkFile" type="file" accept="image/*" hidden></div>
+      <label class="bm-check"><input id="tkVis" type="checkbox" ${t.visible!==false?'checked':''}> Visible to players</label>
+      <div class="bm-row"><button class="btn" id="tkLib">Add to library</button><button class="btn bm-del" id="tkDel">Delete</button></div>`;
+    const upd = patch => { Object.assign(t, patch); save(); renderTokens(); };
+    pTok.querySelector('.bm-x').onclick = () => select(null);
+    pTok.querySelector('#tkNom').oninput = e => upd({nom:e.target.value});
+    pTok.querySelector('#tkType').onchange = e => {
+      const type = e.target.value, col = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f'}[type];
+      upd({type, couleur:col}); select(t.id);
+    };
+    pTok.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { upd({taille:+b.dataset.sz}); select(t.id); });
+    pTok.querySelector('#tkCol').oninput = e => upd({couleur:e.target.value});
+    pTok.querySelector('#tkImg').onchange = e => upd({img:e.target.value.trim()});
+    pTok.querySelector('#tkFile').onchange = async e => {
+      const f = e.target.files[0]; if(!f) return;
+      const url = await storeImage(f); if(url){ upd({img:url}); select(t.id); }
+    };
+    pTok.querySelector('#tkVis').onchange = e => upd({visible:e.target.checked});
+    pTok.querySelector('#tkDel').onclick = () => { C().jetons = C().jetons.filter(j => j.id !== t.id); save(); select(null); };
+    pTok.querySelector('#tkLib').onclick = () => {
+      const base = t.nom.replace(/\s+\d+$/, '');
+      LIB().push({id:'m'+Date.now().toString(36), nom:base, type:t.type, couleur:t.couleur, img:t.img || '', taille:t.taille || 1});
+      save(); toast(base + ' added to the library');
+    };
+  }
+  function toggleCfg(){
+    pTok.hidden = true; pLib.hidden = true; selected = null; renderTokens();
+    if(!pCfg.hidden){ pCfg.hidden = true; return; }
+    const c = C();
+    pCfg.hidden = false;
+    pCfg.innerHTML = `
+      <div class="bm-ph"><b>Map</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <label for="mpUrl">Image</label>
+      <div class="bm-row"><input id="mpUrl" placeholder="Map image link" value="${esc(c.src.startsWith('data:') ? '' : c.src)}"><label class="btn" for="mpFile">Upload</label><input id="mpFile" type="file" accept="image/*" hidden></div>
+      <label class="bm-check"><input id="mpGrid" type="checkbox" ${c.grid?'checked':''}> Show grid</label>
+      <label for="mpCell">Square size <output id="mpCellO">${c.cell} px</output></label><input id="mpCell" type="range" min="16" max="300" value="${c.cell}">
+      <label for="mpOx">Horizontal offset <output id="mpOxO">${c.offX} px</output></label><input id="mpOx" type="range" min="0" max="${c.cell}" value="${c.offX}">
+      <label for="mpOy">Vertical offset <output id="mpOyO">${c.offY} px</output></label><input id="mpOy" type="range" min="0" max="${c.cell}" value="${c.offY}">
+      <p class="bm-hint">Line the squares up with the ones drawn on the image. 1 square = 5 ft.</p>`;
+    const upd = patch => { Object.assign(c, patch); save(); renderGrid(); renderTokens(); };
+    pCfg.querySelector('.bm-x').onclick = () => { pCfg.hidden = true; };
+    pCfg.querySelector('#mpUrl').onchange = e => { const v = e.target.value.trim(); if(v){ upd({src:v, path:null}); view = null; render(); } };
+    pCfg.querySelector('#mpFile').onchange = async e => {
+      const f = e.target.files[0]; if(!f) return;
+      const url = await storeImage(f); if(url){ upd({src:url}); view = null; render(); toggleCfg(); toggleCfg(); }
+    };
+    pCfg.querySelector('#mpGrid').onchange = e => upd({grid:e.target.checked});
+    pCfg.querySelector('#mpCell').oninput = e => {
+      const v = +e.target.value; pCfg.querySelector('#mpCellO').textContent = v + ' px';
+      pCfg.querySelector('#mpOx').max = v; pCfg.querySelector('#mpOy').max = v; upd({cell:v});
+    };
+    pCfg.querySelector('#mpOx').oninput = e => { pCfg.querySelector('#mpOxO').textContent = e.target.value + ' px'; upd({offX:+e.target.value}); };
+    pCfg.querySelector('#mpOy').oninput = e => { pCfg.querySelector('#mpOyO').textContent = e.target.value + ' px'; upd({offY:+e.target.value}); };
+  }
+
+  new ResizeObserver(() => { if(!MAP_VIEWS[key]) fit(); }).observe(root);
+  render();
+  return {
+    refresh(){ render(); },
+    fit(){ requestAnimationFrame(fit); },
+    moveToken(id, x, y){
+      if(dragging && dragging.id === id) return;
+      const el = layer.querySelector(`.tok[data-id="${CSS.escape(id)}"]`);
+      if(el){ el.style.left = x + 'px'; el.style.top = y + 'px'; }
+    }
+  };
+}
+
+/* Enregistre une image (carte ou jeton) : Supabase si en ligne, sinon intégrée au navigateur */
+async function storeImage(f){
+  if(!sb){ return await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); }); }
+  toast('Uploading ' + f.name + '…');
+  const path = Date.now() + '-' + f.name.normalize('NFD').replace(/[^\w.-]+/g,'_');
+  const { error } = await sb.storage.from('scenes').upload(path, f, {contentType: f.type, upsert:false});
+  if(error){ toast('Upload failed: ' + error.message); return null; }
+  return sb.storage.from('scenes').getPublicUrl(path).data.publicUrl;
+}
+
 const DEFAULT = {
-  owlbearUrl:'',
+  carte: structuredClone(DEFAULT_CARTE),
   notesUrl:'',
-  discord:{url:'', guild:'', channel:'', label:'table-de-jeu'},
+  discord:{url:'', guild:'', channel:'', label:'game-table'},
   images: SAMPLE_IMAGES,
   current:'ex1',
-  ambiance:{lieu:'Valbrune', jour:'3e jour de Flamerègne', heure:'Crépuscule', meteo:'Pluie fine', objectif:"Retrouver l'apprenti disparu de Maître Aldric"},
+  ambiance:{lieu:'Valbrune', jour:'3rd of Flamerule', heure:'Dusk', meteo:'Light rain', objectif:"Find Master Aldric's missing apprentice"},
   music:{playlist:0, track:0, playing:false, volume:60},
   split:'both',
   skin:'nuit',
-  codeJoueurs:''
+  codeJoueurs:'',
+  jetonsBiblio:[
+    {id:'m1', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1},
+    {id:'m2', nom:'Wolf', type:'ennemi', couleur:'#6b6f78', img:'', taille:1},
+    {id:'m3', nom:'Guard', type:'pnj', couleur:'#c9a13f', img:'', taille:1},
+    {id:'m4', nom:'Ogre', type:'ennemi', couleur:'#7a3a2c', img:'', taille:2},
+    {id:'m5', nom:'Kaelen', type:'pj', couleur:'#5b8fd6', img:'', taille:1}
+  ]
 };
 
 function load(){
@@ -317,8 +798,8 @@ let bc = null; try{ bc = new BroadcastChannel('table-mj'); }catch(e){}
 const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
-const PUBLIC_KEYS  = ['owlbearUrl','images','current','ambiance','skin','discord']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs'];                                   // réservés au MJ
+const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord']; // visibles par les joueurs
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
@@ -352,6 +833,7 @@ function ensureLive(){
   liveCh = null; liveReady = false; liveCode = code;
   if(!code) return;
   liveCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}});
+  liveCh.on('broadcast', {event:'jeton'}, m => applyJeton(m.payload));
   liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
 }
 function broadcast(){
@@ -361,15 +843,26 @@ function broadcast(){
 }
 function setSync(st){
   const el = document.getElementById('syncTag'); if(!el) return;
-  const map = {ok:['En ligne · synchronisé','ok'], pending:['Envoi…',''], error:['Hors ligne · non synchronisé','err'], local:['Mode local (non publié)','']};
+  const map = {ok:['Online · synced','ok'], pending:['Saving…',''], error:['Offline · not synced','err'], local:['Local mode (not published)','']};
   const [txt, cls] = map[st] || map.local;
   el.textContent = txt; el.className = 'tag sync ' + cls;
 }
 function receive(s){
-  const prevObr = state.owlbearUrl;
   state = Object.assign(structuredClone(DEFAULT), state, s);
   renderShared();
-  if(!isAdmin && state.owlbearUrl !== prevObr) renderLeft(); // ne recharge Owlbear que si le lien change
+  currentMap && currentMap.refresh();
+}
+/* Déplacements de jetons en direct (joueurs ↔ MJ) */
+let playerCh = null, me = '', playerCode = '';
+function sendJeton(id, x, y, fin){
+  const ch = isAdmin ? (liveReady ? liveCh : null) : playerCh;
+  ch && ch.send({type:'broadcast', event:'jeton', payload:{id, x, y, fin:!!fin}});
+}
+function applyJeton(p){
+  const t = state.carte && state.carte.jetons.find(j => j.id === p.id); if(!t) return;
+  if(p.img !== undefined){ t.img = p.img; currentMap && currentMap.refresh(); return; }
+  t.x = p.x; t.y = p.y;
+  currentMap && currentMap.moveToken(p.id, p.x, p.y);
 }
 bc && (bc.onmessage = e => receive(e.data));
 addEventListener('storage', e => { if(e.key===KEY && e.newValue){ try{ receive(JSON.parse(e.newValue)); }catch(_){} } });
@@ -380,7 +873,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
 
 /* ============ Bandeau ============ */
-const FIELDS = [['lieu','Lieu'],['jour','Jour'],['heure','Heure'],['meteo','Météo'],['objectif','Objectif actuel']];
+const FIELDS = [['lieu','Location'],['jour','Date'],['heure','Time'],['meteo','Weather'],['objectif','Current quest']];
 function renderBanner(){
   const a = state.ambiance;
   $('#banner').innerHTML = FIELDS.map(([k,l]) => {
@@ -400,23 +893,23 @@ function renderScene(){
   const img = state.images.find(i => i.id===state.current);
   $('#scene').innerHTML = img
     ? `<img src="${esc(img.src)}" alt="${esc(img.name)}"><div class="cap">${esc(img.name)}</div>`
-    : `<div class="empty"><div><b>Aucune image</b>Le MJ n'a rien affiché pour l'instant.</div></div>`;
+    : `<div class="empty"><div><b>No image</b>The GM hasn't shown anything yet.</div></div>`;
   $('#sceneTag').hidden = !isAdmin;
 }
 
 /* ============ Discord (exemple Avrae) ============ */
 const FEED = [
-  {who:'Kaelen', c:'#9fc3e8', when:'20:41', txt:"J'attaque le gobelin avec mon épée longue"},
-  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:41', embed:{t:'Kaelen attaque avec Épée longue !', lines:[
-    ['Toucher','<code>1d20 (17) + 5</code> = <b>22</b>'],['Dégâts','<code>1d8 (6) + 3</code> = <b>9</b> tranchants'],['Gobelin 2','<b>&lt;-2/7 PV&gt;</b> Inconscient']]}},
-  {who:'Mira', c:'#e0a3c3', when:'20:42', txt:'!cast "bouclier de la foi" -t Kaelen'},
-  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:42', embed:{t:'Mira lance Bouclier de la foi !', lines:[
-    ['Effet','Kaelen gagne +2 CA (concentration, 10 min)'],['Emplacements','Niv. 1 : ◉◉◯◯']]}},
+  {who:'Kaelen', c:'#9fc3e8', when:'20:41', txt:'I attack the goblin with my longsword'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:41', embed:{t:'Kaelen attacks with a Longsword!', lines:[
+    ['To hit','<code>1d20 (17) + 5</code> = <b>22</b>'],['Damage','<code>1d8 (6) + 3</code> = <b>9</b> slashing'],['Goblin 2','<b>&lt;-2/7 HP&gt;</b> Unconscious']]}},
+  {who:'Mira', c:'#e0a3c3', when:'20:42', txt:'!cast "shield of faith" -t Kaelen'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:42', embed:{t:'Mira casts Shield of Faith!', lines:[
+    ['Effect','Kaelen gains +2 AC (concentration, 10 min)'],['Spell slots','Lvl 1: ◉◉◯◯']]}},
   {who:'Avrae', bot:true, c:'#7d86e8', when:'20:43', embed:{t:'Initiative · Round 2', lines:[
-    ['En cours','<b>Gobelin 1</b> &lt;7/7 PV&gt;'],['Suivant','Thorin (14)'],['Puis','Mira (11), Kaelen (9)']]}},
+    ['Current','<b>Goblin 1</b> &lt;7/7 HP&gt;'],['Next','Thorin (14)'],['Then','Mira (11), Kaelen (9)']]}},
   {who:'Thorin', c:'#e8c39f', when:'20:44', txt:'!check perception'},
-  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:44', embed:{t:'Thorin fait un test de Perception !', lines:[
-    ['Résultat','<code>1d20 (<span class="crit">20</span>) + 4</code> = <b>24</b>']]}}
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:44', embed:{t:'Thorin makes a Perception check!', lines:[
+    ['Result','<code>1d20 (<span class="crit">20</span>) + 4</code> = <b>24</b>']]}}
 ];
 function renderFeed(){
   $('#feed').innerHTML = FEED.map(m => `
@@ -432,60 +925,72 @@ function renderFeed(){
 function renderLeft(){
   const left = $('#left');
   if(!isAdmin){
-    left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Carte</h2><span class="sp"></span></div><div class="pane-b" id="obr"></div></div>`;
-    $('#obr').innerHTML = state.owlbearUrl
-      ? `<iframe class="fill" src="${esc(state.owlbearUrl)}" allow="clipboard-read; clipboard-write; fullscreen" title="Owlbear Rodeo"></iframe>`
-      : `<div class="empty"><div><b>Carte non configurée</b>Le MJ doit coller le lien de la room Owlbear Rodeo dans la vue admin.</div></div>`;
+    left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
+      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}</div>
+      <div class="pane-b" id="mapHost"></div></div>`;
+    const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
+    const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
+    currentMap = mountMap($('#mapHost'), 'table', {
+      editable:false, me,
+      onLive:(id,x,y) => sendJeton(id,x,y),
+      onMove:t => {
+        sendJeton(t.id, t.x, t.y, true);
+        if(sb) sb.rpc('deplacer_jeton', {code:playerCode, joueur:me, jeton:t.id, x:t.x, y:t.y})
+          .then(({data, error}) => { if(error || data === false) toast("Move not saved: this isn't your token."); });
+        else save();
+      }
+    });
     return;
   }
   left.classList.add('console');
   left.innerHTML = `
     <div class="pane">
-      <div class="pane-h"><h2>Bibliothèque d'images</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
-        <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Réglages</button>
-        <a class="btn" href="#table" target="_blank" rel="noopener">Vue joueurs ↗</a></div>
+      <div class="pane-h"><h2>Image library</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
+        <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
+        <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
       <div class="lib" id="lib"></div>
       <div class="add">
-        <input type="text" id="imgUrl" placeholder="Coller le lien d'une image (https://…)">
-        <button class="btn primary" id="addUrl">Ajouter</button>
-        <label class="btn" for="imgFile">Importer depuis l'ordinateur</label>
+        <input type="text" id="imgUrl" placeholder="Paste an image link (https://…)">
+        <button class="btn primary" id="addUrl">Add</button>
+        <label class="btn" for="imgFile">Upload from computer</label>
         <input type="file" id="imgFile" accept="image/*" multiple hidden>
       </div>
     </div>
     <div class="pop" id="setPop" ${settingsOpen?'':'hidden'}>
       <div class="settings">
-        <label>Thème</label><div class="seg" role="group" aria-label="Thème" style="justify-self:start">
-          <button data-skin="nuit" class="${state.skin!=='parchemin'?'on':''}">Nuit</button>
-          <button data-skin="parchemin" class="${state.skin==='parchemin'?'on':''}">Parchemin</button></div>
-        <label for="capInput">Titre affiché</label><input id="capInput" class="cap-in" placeholder="Sélectionnez une image">
-        <label for="obrUrl">Room Owlbear</label><input id="obrUrl" placeholder="https://www.owlbear.rodeo/room/…" value="${esc(state.owlbearUrl)}">
-        <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Lien d'un Google Doc ou d'un fichier .txt / .pdf du Drive" value="${esc(state.notesUrl)}">
-        <label for="codeJ">Code joueurs</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="Ex. dragon-rouge" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'À donner aux joueurs' : 'Vue joueurs fermée tant qu\'aucun code'}</span></div>
-        <label for="dcUrl">Salon Discord</label><div class="dc-row"><input id="dcUrl" placeholder="Lien du salon : https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Nom affiché" value="${esc(state.discord.label)}"></div>
+        <label>Theme</label><div class="seg" role="group" aria-label="Theme" style="justify-self:start">
+          <button data-skin="nuit" class="${state.skin!=='parchemin'?'on':''}">Night</button>
+          <button data-skin="parchemin" class="${state.skin==='parchemin'?'on':''}">Parchment</button></div>
+        <label for="capInput">Caption</label><input id="capInput" class="cap-in" placeholder="Select an image">
+        <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Link to a Google Doc or a .txt / .pdf file on Drive" value="${esc(state.notesUrl)}">
+        <label for="codeJ">Player code</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="e.g. red-dragon" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'Share this with your players' : 'Player view locked until a code is set'}</span></div>
+        <label for="dcUrl">Discord channel</label><div class="dc-row"><input id="dcUrl" placeholder="Channel link: https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Display name" value="${esc(state.discord.label)}"></div>
       </div>
-      ${sb ? `<div class="pop-foot"><button class="btn" id="logoutBtn">Se déconnecter</button></div>` : ''}
+      ${sb ? `<div class="pop-foot"><button class="btn" id="logoutBtn">Sign out</button></div>` : ''}
     </div>
     <div class="pane">
-      <div class="pane-h"><h2>Carte & notes</h2><span class="sp"></span>
-        <div class="seg" role="group" aria-label="Disposition">
-          <button data-split="map" class="${state.split==='map'?'on':''}">Carte</button>
-          <button data-split="both" class="${state.split==='both'?'on':''}">Les deux</button>
+      <div class="pane-h"><h2>Map & notes</h2><span class="sp"></span>
+        <div class="seg" role="group" aria-label="Layout">
+          <button data-split="map" class="${state.split==='map'?'on':''}">Map</button>
+          <button data-split="both" class="${state.split==='both'?'on':''}">Both</button>
           <button data-split="notes" class="${state.split==='notes'?'on':''}">Notes</button>
         </div>
-        ${state.owlbearUrl?`<a class="btn" href="${esc(state.owlbearUrl)}" target="_blank" rel="noopener">Owlbear ↗</a>`:''}
-        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener" title="Ouvrir pour modifier">Notes ↗</a>`:''}</div>
+        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener" title="Open to edit">Notes ↗</a>`:''}</div>
       <div class="pane-b split" data-mode="${state.split}">
-        <div class="half" id="miniObr">${state.owlbearUrl
-          ? `<iframe class="fill" src="${esc(state.owlbearUrl)}" allow="clipboard-read; clipboard-write; fullscreen" title="Owlbear Rodeo"></iframe>`
-          : `<div class="empty"><div><b>Carte non liée</b>Collez le lien de la room Owlbear dans ⚙ Réglages.</div></div>`}</div>
+        <div class="half" id="miniMap"></div>
         <div class="half reader" id="notes">${state.notesUrl
-          ? `<iframe class="fill" src="${esc(driveReader(state.notesUrl))}" title="Notes de session"></iframe>`
-          : `<div class="empty"><div><b>Aucune note liée</b>Collez le lien de votre document Drive dans ⚙ Réglages.</div></div>`}</div>
+          ? `<iframe class="fill" src="${esc(driveReader(state.notesUrl))}" title="Session notes"></iframe>`
+          : `<div class="empty"><div><b>No notes linked</b>Paste your Drive document link in ⚙ Settings.</div></div>`}</div>
       </div>
     </div>`;
+  currentMap = mountMap($('#miniMap'), 'admin', {
+    editable:true,
+    onLive:(id,x,y) => sendJeton(id,x,y),
+    onMove:t => { sendJeton(t.id, t.x, t.y, true); save(); }
+  });
   renderLib();
   $('#addUrl').onclick = () => {
-    const url = $('#imgUrl').value.trim(); if(!url) return toast("Collez d'abord le lien d'une image.");
+    const url = $('#imgUrl').value.trim(); if(!url) return toast('Paste an image link first.');
     const name = decodeURIComponent(url.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ') || 'Nouvelle image';
     addImage(name, url);
     $('#imgUrl').value='';
@@ -503,20 +1008,21 @@ function renderLeft(){
   $('#dcUrl').onchange = e => {
     const url = e.target.value.trim();
     const m = url.match(/channels\/(\d+|@me)\/(\d+)/);
-    if(url && !m){ toast('Lien non reconnu : clic droit sur le salon > Copier le lien'); return; }
+    if(url && !m){ toast('Link not recognized: right-click the channel > Copy Link'); return; }
     state.discord = Object.assign(state.discord, {url, guild:m?m[1]:'', channel:m?m[2]:''});
-    save(); renderChannel(); toast(url ? 'Salon Discord enregistré' : 'Salon Discord retiré');
+    save(); renderChannel(); toast(url ? 'Discord channel saved' : 'Discord channel removed');
   };
   $('#codeJ').onchange = e => {
     state.codeJoueurs = e.target.value.trim();
     save(); renderLeft();
-    toast(state.codeJoueurs ? 'Code joueurs : ' + state.codeJoueurs : 'Vue joueurs fermée (aucun code)');
+    toast(state.codeJoueurs ? 'Player code: ' + state.codeJoueurs : 'Player view locked (no code)');
   };
   $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
-  $('#obrUrl').onchange = e => { state.owlbearUrl=e.target.value.trim(); save(); renderLeft(); toast('Room Owlbear enregistrée'); };
+
   document.querySelectorAll('[data-split]').forEach(b => b.onclick = () => {
     state.split = b.dataset.split; save();
     document.querySelector('.split').dataset.mode = state.split;
+    currentMap && currentMap.fit();                       // recadre la carte sur sa nouvelle taille
     document.querySelectorAll('[data-split]').forEach(x => x.classList.toggle('on', x===b));
   });
   document.querySelectorAll('button[data-skin]').forEach(b => b.onclick = () => {
@@ -532,10 +1038,10 @@ function renderLeft(){
 async function uploadImage(f){
   const name = f.name.replace(/\.[^.]+$/,'');
   if(!sb){ const r=new FileReader(); r.onload=()=>addImage(name, r.result); r.readAsDataURL(f); return; }
-  toast('Envoi de « ' + name + ' »…');
+  toast('Uploading ' + name + '…');
   const path = Date.now() + '-' + f.name.normalize('NFD').replace(/[^\w.-]+/g,'_');
   const { error } = await sb.storage.from('scenes').upload(path, f, {contentType: f.type, upsert:false});
-  if(error) return toast('Envoi impossible : ' + error.message);
+  if(error) return toast('Upload failed: ' + error.message);
   const { data } = sb.storage.from('scenes').getPublicUrl(path);
   addImage(name, data.publicUrl, path);
 }
@@ -563,7 +1069,7 @@ document.addEventListener('mousedown', e => {
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && settingsOpen) toggleSettings(false); });
 function addImage(name, src, path){
   const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-  state.images.push(path ? {id,name,src,path} : {id,name,src}); save(); renderLib(); toast('Image ajoutée : '+name);
+  state.images.push(path ? {id,name,src,path} : {id,name,src}); save(); renderLib(); toast('Image added: '+name);
 }
 function renderLib(){
   const cur = state.images.find(i => i.id===state.current), ci = $('#capInput');
@@ -571,8 +1077,8 @@ function renderLib(){
   $('#lib').innerHTML = state.images.map(i => `
     <button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Afficher aux joueurs">
       <img src="${esc(i.src)}" alt=""><span class="n">${esc(i.name)}</span>
-      <span class="x" data-del="${i.id}" role="button" aria-label="Supprimer">✕</span></button>`).join('')
-    || '<p style="color:var(--muted);margin:0">Bibliothèque vide.</p>';
+      <span class="x" data-del="${i.id}" role="button" aria-label="Delete">✕</span></button>`).join('')
+    || '<p style="color:var(--muted);margin:0">Library is empty.</p>';
   $('#lib').querySelectorAll('.thumb').forEach(b => b.onclick = e => {
     const del = e.target.dataset.del;
     if(del){
@@ -587,26 +1093,26 @@ function renderLib(){
 
 /* ============ Spotify (maquette) ============ */
 const PLAYLISTS = [
-  {name:'Exploration', tracks:[['Brumes du matin','Ambiance'],['Sentier oublié','Ambiance'],['Route marchande','Ambiance']]},
-  {name:'Combat', tracks:[['Choc des lames','Épique'],['Horde gobeline','Épique'],['Le dernier rempart','Épique']]},
-  {name:'Taverne', tracks:[['Chope pleine','Folk'],['Danse du ménestrel','Folk']]},
-  {name:'Donjon', tracks:[['Échos de pierre','Sombre'],['Ce qui rampe','Sombre']]}
+  {name:'Exploration', tracks:[['Morning Mists','Ambient'],['Forgotten Path','Ambient'],['Merchant Road','Ambient']]},
+  {name:'Combat', tracks:[['Clash of Blades','Epic'],['Goblin Horde','Epic'],['The Last Rampart','Epic']]},
+  {name:'Tavern', tracks:[['Full Tankard','Folk'],["Minstrel's Jig",'Folk']]},
+  {name:'Dungeon', tracks:[['Stone Echoes','Dark'],['What Crawls Below','Dark']]}
 ];
 function renderMusic(){
   const m = state.music, pl = PLAYLISTS[m.playlist], tr = pl.tracks[m.track];
   const el = $('#music'); el.hidden=false;
   el.innerHTML = `
     <div class="ctl">
-      <button id="mPrev" aria-label="Précédent">⏮</button>
-      <button id="mPlay" class="play" aria-label="${m.playing?'Pause':'Lecture'}">${m.playing?'⏸':'▶'}</button>
-      <button id="mNext" aria-label="Suivant">⏭</button>
+      <button id="mPrev" aria-label="Previous">⏮</button>
+      <button id="mPlay" class="play" aria-label="${m.playing?'Pause':'Play'}">${m.playing?'⏸':'▶'}</button>
+      <button id="mNext" aria-label="Next">⏭</button>
     </div>
     <div class="now" style="width:210px"><div class="t">${esc(tr[0])}</div><div class="a">${esc(pl.name)} · ${esc(tr[1])}</div></div>
     <div style="display:flex;gap:10px;align-items:center;min-width:0">
       <select id="mPl" aria-label="Playlist">${PLAYLISTS.map((p,i)=>`<option value="${i}" ${i===m.playlist?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
       <div class="tracks">${pl.tracks.map((t,i)=>`<button data-t="${i}" class="${i===m.track?'on':''}">${esc(t[0])}</button>`).join('')}</div>
     </div>
-    <div class="vol"><span class="tag ex">Exemple · Spotify non connecté</span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="${m.volume}" aria-label="Volume"></div>`;
+    <div class="vol"><span class="tag ex">Sample · Spotify not connected</span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="${m.volume}" aria-label="Volume"></div>`;
   const set = (patch) => { Object.assign(state.music, patch); save(); renderMusic(); };
   $('#mPlay').onclick = () => set({playing:!m.playing});
   $('#mPrev').onclick = () => set({track:(m.track-1+pl.tracks.length)%pl.tracks.length, playing:true});
@@ -623,7 +1129,7 @@ function renderChannel(){
 }
 function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
 function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
-document.title = isAdmin ? 'Table du MJ · Admin' : 'Table du MJ';
+document.title = isAdmin ? 'GM Table · Admin' : 'GM Table';
 function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
 
 async function boot(){
@@ -632,11 +1138,12 @@ async function boot(){
     session = (await sb.auth.getSession()).data.session;
     if(!session){ showLogin(); return; }
     const { data, error } = await sb.from('etat').select('id,data');
-    if(error){ toast('Lecture impossible : ' + error.message); renderAll(); setSync('error'); return; }
+    if(error){ toast('Could not load: ' + error.message); renderAll(); setSync('error'); return; }
     const pub = data.find(r=>r.id==='public')?.data || {}, prv = data.find(r=>r.id==='prive')?.data || {};
     const firstRun = !Object.keys(pub).length;
     state = Object.assign(structuredClone(DEFAULT), firstRun ? {} : pub, prv);
     renderAll();
+    ensureLive();                                         // écoute les déplacements des joueurs
     if(firstRun) push();                                  // publie l'état de départ
   } else {
     try{ localStorage.removeItem('table-mj-code'); }catch(e){}   // ancienne version : code mémorisé durablement
@@ -644,10 +1151,20 @@ async function boot(){
     if(!code){ askCode(); return; }
     const data = await readTable(code);
     if(!data){ try{ sessionStorage.removeItem('table-mj-code'); }catch(e){} askCode(true); return; }
+    playerCode = code;
+    try{ me = sessionStorage.getItem('table-mj-joueur') || ''; }catch(e){}
+    if(!me){ chooseIdentity(data); return; }
     state = structuredClone(DEFAULT); state.images = []; state.current = null;
     Object.assign(state, data);
     renderAll();
-    sb.channel('table-' + code).on('broadcast', {event:'etat'}, msg => receive(msg.payload)).subscribe();
+    playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}})
+      .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
+      .on('broadcast', {event:'jeton'}, msg => applyJeton(msg.payload))
+      .subscribe();
+    // Premier passage : proposer d'importer son image de jeton
+    const mine = myToken();
+    let asked = false; try{ asked = sessionStorage.getItem('table-mj-jeton-propose') === '1'; }catch(e){}
+    if(mine && !mine.img && !asked){ try{ sessionStorage.setItem('table-mj-jeton-propose','1'); }catch(e){} openMyToken(true); }
     // Contrôle régulier : rattrape un message manqué, et ferme la vue si le MJ change le code
     setInterval(async () => {
       const d = await readTable(code);
@@ -659,18 +1176,76 @@ async function readTable(code){
   const { data, error } = await sb.rpc('lire_table', { code });
   return error ? null : data;
 }
+function myToken(){ return me && me !== '-' && state.carte ? state.carte.jetons.find(t => t.type === 'pj' && t.nom === me) : null; }
+/* Réduit une image en vignette carrée (≈10 Ko) pour le jeton du joueur */
+function tokenThumb(file){
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => {
+      const S = 160, cv = document.createElement('canvas'); cv.width = cv.height = S;
+      const k = Math.max(S / im.width, S / im.height), w = im.width * k, h = im.height * k;
+      cv.getContext('2d').drawImage(im, (S - w) / 2, (S - h) / 2, w, h);
+      let url = cv.toDataURL('image/webp', 0.82);
+      if(!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', 0.82);
+      URL.revokeObjectURL(im.src); res(url);
+    };
+    im.onerror = () => rej(new Error('Unreadable image'));
+    im.src = URL.createObjectURL(file);
+  });
+}
+function openMyToken(first){
+  const t = myToken(); if(!t) return;
+  const m = $('#modal');
+  m.hidden = false;
+  m.innerHTML = `<div class="modal-card" role="dialog" aria-labelledby="mtT">
+    <h2 id="mtT">${first ? 'Your token' : 'My token'}</h2>
+    <p>${first ? 'Upload a picture of ' + esc(t.nom) + ' for the map. You can change it later with "My token".' : 'Change the picture of ' + esc(t.nom) + ' on the map.'}</p>
+    <div class="lib-prev"><span class="lib-c big" id="mtPrev" style="--tc:${esc(t.couleur)}">${t.img ? `<img src="${esc(t.img)}" alt="">` : `<span>${esc(initials(t.nom))}</span>`}</span></div>
+    <label class="btn primary" for="mtFile">Upload an image</label><input id="mtFile" type="file" accept="image/*" hidden>
+    <button class="btn" id="mtClose">${first ? 'Later' : 'Close'}</button>
+  </div>`;
+  $('#mtClose').onclick = () => { m.hidden = true; };
+  m.onclick = e => { if(e.target === m) m.hidden = true; };   // clic à côté : fermer
+  $('#mtFile').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const img = await tokenThumb(f);
+      if(sb){
+        const { data, error } = await sb.rpc('image_jeton', {code:playerCode, joueur:me, img});
+        if(error || data === false){ toast("Image not saved. Try again or ask your GM."); return; }
+      }
+      t.img = img; currentMap && currentMap.refresh();
+      playerCh && playerCh.send({type:'broadcast', event:'jeton', payload:{id:t.id, img}});
+      $('#mtPrev').innerHTML = `<img src="${img}" alt="">`;
+      toast('Token updated'); $('#mtClose').textContent = 'Done';
+    }catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
+  };
+}
+function chooseIdentity(data){
+  const pjs = ((data.carte && data.carte.jetons) || []).filter(t => t.type === 'pj' && t.visible !== false);
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').innerHTML = `
+    <h1>Who are you?</h1>
+    <p>Pick your character so you can move their token on the map.</p>
+    <div class="who-list">${pjs.map(t => `<button type="button" class="btn who" data-n="${esc(t.nom)}"><span class="dot" style="background:${esc(t.couleur)}"></span>${esc(t.nom)}</button>`).join('')}
+      <button type="button" class="btn who" data-n="-">Just watch</button></div>`;
+  $('#loginForm').querySelectorAll('.who').forEach(b => b.onclick = () => {
+    try{ sessionStorage.setItem('table-mj-joueur', b.dataset.n); }catch(e){}
+    location.reload();
+  });
+}
 function askCode(wrong){
   $('#login').hidden = false; $('#app').style.visibility = 'hidden';
   $('#loginForm').innerHTML = `
-    <h1>Table du MJ</h1>
-    <p>Entrez le code donné par votre maître du jeu.</p>
-    <label for="cdIn">Code d'accès</label><input id="cdIn" autocomplete="off" required autofocus>
-    <button class="btn primary" type="submit">Rejoindre la table</button>
-    <p class="login-err" id="lgErr" ${wrong?'':'hidden'}>Code incorrect ou expiré.</p>`;
+    <h1>GM Table</h1>
+    <p>Enter the code your Game Master gave you.</p>
+    <label for="cdIn">Access code</label><input id="cdIn" autocomplete="off" required autofocus>
+    <button class="btn primary" type="submit">Join the table</button>
+    <p class="login-err" id="lgErr" ${wrong?'':'hidden'}>Wrong or expired code.</p>`;
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const code = $('#cdIn').value.trim();
-    if(!(await readTable(code))){ const er=$('#lgErr'); er.textContent='Code incorrect.'; er.hidden=false; return; }
+    if(!(await readTable(code))){ const er=$('#lgErr'); er.textContent='Wrong code.'; er.hidden=false; return; }
     try{ sessionStorage.setItem('table-mj-code', code); }catch(e){}
     location.reload();
   };
@@ -680,7 +1255,7 @@ function showLogin(){
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const { error } = await sb.auth.signInWithPassword({ email: $('#lgEmail').value.trim(), password: $('#lgPass').value });
-    if(error){ const er=$('#lgErr'); er.textContent = 'Connexion refusée : vérifiez l\'e-mail et le mot de passe.'; er.hidden=false; return; }
+    if(error){ const er=$('#lgErr'); er.textContent = 'Sign-in failed: check your email and password.'; er.hidden=false; return; }
     location.reload();
   };
 }
