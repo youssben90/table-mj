@@ -121,6 +121,12 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .code-hint{align-self:center;font-size:12px;color:var(--muted)}
 .tag.sync.ok{color:var(--ok);border-color:rgba(111,191,138,.4)}
 .tag.sync.err{color:var(--danger);border-color:rgba(217,112,95,.5)}
+/* Fenêtre de réglages */
+.col.left{position:relative}
+.pop{position:absolute;top:46px;right:12px;width:min(620px,calc(100% - 24px));z-index:20;background:var(--panel);
+  border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.pop .settings{border-top:0;padding:14px}
+.reader iframe.fill{background:#fff}
 /* Salon Discord */
 .dc-row{display:grid;grid-template-columns:1fr 150px;gap:6px}
 .settings input.dc-label{font-family:var(--f-body);font-size:13px}
@@ -435,7 +441,8 @@ function renderLeft(){
   left.innerHTML = `
     <div class="pane">
       <div class="pane-h"><h2>Bibliothèque d'images</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
-        <a class="btn" href="#table" target="_blank" rel="noopener">Ouvrir la vue joueurs ↗</a></div>
+        <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Réglages</button>
+        <a class="btn" href="#table" target="_blank" rel="noopener">Vue joueurs ↗</a></div>
       <div class="lib" id="lib"></div>
       <div class="add">
         <input type="text" id="imgUrl" placeholder="Coller le lien d'une image (https://…)">
@@ -443,13 +450,15 @@ function renderLeft(){
         <label class="btn" for="imgFile">Importer depuis l'ordinateur</label>
         <input type="file" id="imgFile" accept="image/*" multiple hidden>
       </div>
+    </div>
+    <div class="pop" id="setPop" ${settingsOpen?'':'hidden'}>
       <div class="settings">
         <label>Thème</label><div class="seg" role="group" aria-label="Thème" style="justify-self:start">
           <button data-skin="nuit" class="${state.skin!=='parchemin'?'on':''}">Nuit</button>
           <button data-skin="parchemin" class="${state.skin==='parchemin'?'on':''}">Parchemin</button></div>
         <label for="capInput">Titre affiché</label><input id="capInput" class="cap-in" placeholder="Sélectionnez une image">
         <label for="obrUrl">Room Owlbear</label><input id="obrUrl" placeholder="https://www.owlbear.rodeo/room/…" value="${esc(state.owlbearUrl)}">
-        <label for="notesUrl">Notes (Google Doc)</label><input id="notesUrl" placeholder="https://docs.google.com/document/d/…" value="${esc(state.notesUrl)}">
+        <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Lien d'un Google Doc ou d'un fichier .txt / .pdf du Drive" value="${esc(state.notesUrl)}">
         <label for="codeJ">Code joueurs</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="Ex. dragon-rouge" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'À donner aux joueurs' : 'Vue joueurs fermée tant qu\'aucun code'}</span></div>
         <label for="dcUrl">Salon Discord</label><div class="dc-row"><input id="dcUrl" placeholder="Lien du salon : https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Nom affiché" value="${esc(state.discord.label)}"></div>
       </div>
@@ -462,14 +471,14 @@ function renderLeft(){
           <button data-split="notes" class="${state.split==='notes'?'on':''}">Notes</button>
         </div>
         ${state.owlbearUrl?`<a class="btn" href="${esc(state.owlbearUrl)}" target="_blank" rel="noopener">Owlbear ↗</a>`:''}
-        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener">Google Docs ↗</a>`:''}</div>
+        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener" title="Ouvrir pour modifier">Notes ↗</a>`:''}</div>
       <div class="pane-b split" data-mode="${state.split}">
         <div class="half" id="miniObr">${state.owlbearUrl
           ? `<iframe class="fill" src="${esc(state.owlbearUrl)}" allow="clipboard-read; clipboard-write; fullscreen" title="Owlbear Rodeo"></iframe>`
-          : `<div class="empty"><div><b>Carte non liée</b>Collez le lien de la room Owlbear ci-dessus.</div></div>`}</div>
-        <div class="half" id="notes">${state.notesUrl
-          ? `<iframe class="fill" src="${esc(state.notesUrl)}" title="Notes de session"></iframe>`
-          : `<div class="empty"><div><b>Aucun document lié</b>Collez le lien de votre Google Doc ci-dessus.</div></div>`}</div>
+          : `<div class="empty"><div><b>Carte non liée</b>Collez le lien de la room Owlbear dans ⚙ Réglages.</div></div>`}</div>
+        <div class="half reader" id="notes">${state.notesUrl
+          ? `<iframe class="fill" src="${esc(driveReader(state.notesUrl))}" title="Notes de session"></iframe>`
+          : `<div class="empty"><div><b>Aucune note liée</b>Collez le lien de votre document Drive dans ⚙ Réglages.</div></div>`}</div>
       </div>
     </div>`;
   renderLib();
@@ -484,6 +493,7 @@ function renderLeft(){
     e.target.value='';
   };
   $('#notesUrl').onchange = e => { state.notesUrl=e.target.value.trim(); save(); renderLeft(); };
+  $('#setBtn').onclick = e => { e.stopPropagation(); toggleSettings(!settingsOpen); };
   $('#dcUrl').onchange = e => {
     const url = e.target.value.trim();
     const m = url.match(/channels\/(\d+|@me)\/(\d+)/);
@@ -523,6 +533,28 @@ async function uploadImage(f){
   const { data } = sb.storage.from('scenes').getPublicUrl(path);
   addImage(name, data.publicUrl, path);
 }
+/* Notes en lecture seule : Google Doc ou fichier du Drive (.txt, .pdf…) affiché en mode aperçu, sans menus */
+function driveReader(url){
+  let m = url.match(/docs\.google\.com\/document\/d\/([\w-]+)/);
+  if(m) return `https://docs.google.com/document/d/${m[1]}/preview`;
+  m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || url.match(/drive\.google\.com\/(?:open|uc)\?(?:.*&)?id=([\w-]+)/);
+  if(m) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  return url;
+}
+/* Fenêtre de réglages : s'ouvre au bouton, se ferme en cliquant ailleurs ou avec Échap */
+let settingsOpen = false;
+function toggleSettings(open){
+  if(!open && document.activeElement && $('#setPop').contains(document.activeElement)) document.activeElement.blur(); // valide le champ en cours
+  settingsOpen = open;
+  const pop = $('#setPop'); if(pop) pop.hidden = !open;
+  const b = $('#setBtn'); if(b) b.setAttribute('aria-expanded', open);
+}
+document.addEventListener('mousedown', e => {
+  if(!settingsOpen) return;
+  const pop = $('#setPop'), btn = $('#setBtn');
+  if(pop && !pop.contains(e.target) && !(btn && btn.contains(e.target))) toggleSettings(false);
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && settingsOpen) toggleSettings(false); });
 function addImage(name, src, path){
   const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   state.images.push(path ? {id,name,src,path} : {id,name,src}); save(); renderLib(); toast('Image ajoutée : '+name);
