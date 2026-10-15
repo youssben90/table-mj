@@ -109,7 +109,23 @@ img.av{object-fit:cover;background:var(--panel-2)}
 
 /* ---------- Admin ---------- */
 .console{grid-template-rows:auto minmax(0,1fr)}
-.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding:10px 12px;max-height:228px;overflow-y:auto}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding:6px 12px 10px;max-height:240px;overflow-y:auto}
+#libCats .cat-bar{padding:10px 12px 0}
+.sc-it{display:grid;gap:4px;align-content:start}
+.cat-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cat-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);overflow:hidden}
+.cat-chip.on{border-color:var(--gold);background:var(--gold-soft)}
+.cat-chip.over{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.cat-b{border:0;background:transparent;padding:4px 10px;font-size:12px;display:inline-flex;gap:6px;align-items:center}
+.cat-chip.on .cat-b{color:var(--gold)}
+.cat-n{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cat-ed{border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);font-size:11px;padding:4px 8px}
+.cat-ed:hover{color:var(--text)}
+.cat-ed.warn{color:var(--danger)}
+.cat-add{border:1px dashed var(--line);border-radius:999px;background:transparent;color:var(--muted);font-size:12px;padding:4px 10px}
+.cat-add:hover{color:var(--gold);border-color:var(--gold)}
+.cat-in{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--gold);background:var(--panel-2);width:140px}
+.cat-sel{font-size:11px;padding:2px 4px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--muted);width:100%;min-width:0}
 .thumb{position:relative;border:2px solid transparent;border-radius:8px;overflow:hidden;background:var(--well);aspect-ratio:4/3;padding:0}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb .n{position:absolute;left:0;right:0;bottom:0;padding:12px 6px 4px;font-size:12px;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -140,6 +156,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .pop{position:absolute;top:46px;right:12px;width:min(620px,calc(100% - 24px));z-index:20;background:var(--panel);
   border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .pop .settings{border-top:0;padding:14px}
+.ver{margin-right:auto;align-self:center;font:600 11px var(--f-mono);color:var(--muted)}
 .pop-foot{display:flex;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--line)}
 .reader iframe.fill{background:#fff}
 /* Salon Discord */
@@ -405,6 +422,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <script src="config.js"></script>
 <script>
 /* ============ État partagé ============ */
+const SITE_VERSION = '1.7';   // à augmenter à chaque mise à jour
 const KEY = 'table-mj-state-v1';
 const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
 
@@ -895,7 +913,7 @@ function mountMap(host, key, opts){
   async function addMap(src, nom, path){
     ensureMapLib(); storeCurrentMap();
     const id = 'map' + Date.now().toString(36);
-    MAPS().push({id, nom, src, path:path || null, w:0, h:0, cell:70, offX:0, offY:0, grid:true});
+    MAPS().push({id, nom, src, path:path || null, w:0, h:0, cell:70, offX:0, offY:0, grid:true, cat:catNewItem('map')});
     save(); switchMap(id);
   }
   function toggleCfg(keepOpen){
@@ -908,12 +926,14 @@ function mountMap(host, key, opts){
     pCfg.innerHTML = `
       <div class="bm-ph"><b>Maps</b><button class="bm-x" aria-label="Close">✕</button></div>
       <p class="bm-hint">Click a map to show it to everyone. Each map keeps its own grid and token positions.</p>
-      <div class="map-grid">${MAPS().map(m => `
+      ${catBarHTML('map', MAPS())}
+      <div class="map-grid">${catFilter('map', MAPS()).map(m => `
         <div class="map-it ${m.id === c.mapId ? 'on' : ''}">
-          <button class="map-th" data-map="${esc(m.id)}" title="Show ${esc(m.nom)}"><img src="${esc(m.src)}" alt="" loading="lazy"></button>
+          <button class="map-th" data-map="${esc(m.id)}" title="Show ${esc(m.nom)}" draggable="true" data-dragid="${esc(m.id)}"><img src="${esc(m.src)}" alt="" loading="lazy" draggable="false"></button>
           <input class="map-nm" data-ren="${esc(m.id)}" value="${esc(m.nom)}" aria-label="Map name">
+          ${catSelectHTML('map', m)}
           ${m.id === c.mapId ? '<span class="map-cur">On screen</span>' : `<button class="map-del" data-del="${esc(m.id)}" aria-label="Delete ${esc(m.nom)}">✕</button>`}
-        </div>`).join('')}</div>
+        </div>`).join('') || '<p class="bm-hint">No map in this category yet. Upload one, or drag a map onto the category.</p>'}</div>
       <div class="bm-row"><label class="btn primary" for="mpFile">+ Upload maps</label><input id="mpFile" type="file" accept="image/*" multiple hidden>
         <input id="mpUrl" placeholder="…or paste an image link"></div>
       <div class="bm-sub">Grid for this map</div>
@@ -930,6 +950,7 @@ function mountMap(host, key, opts){
       <p class="bm-hint">Line the squares up with the ones drawn on the image. 1 square = 5 ft.</p>`;
     const upd = patch => { Object.assign(c, patch); storeCurrentMap(); save(); renderGrid(); renderTokens(); };
     pCfg.querySelector('.bm-x').onclick = () => { pCfg.hidden = true; };
+    catBind(pCfg, 'map', MAPS, () => toggleCfg(true));
     pCfg.querySelectorAll('[data-map]').forEach(b => b.onclick = () => switchMap(b.dataset.map));
     pCfg.querySelectorAll('[data-ren]').forEach(i => i.onchange = e => {
       const m = MAPS().find(x => x.id === i.dataset.ren); if(!m) return;
@@ -954,7 +975,7 @@ function mountMap(host, key, opts){
       for(const f of files){
         const url = await storeImage(f); if(!url) continue;
         ensureMapLib(); storeCurrentMap();
-        last = {id:'map' + Date.now().toString(36) + Math.random().toString(36).slice(2,4), nom:f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' '), src:url, w:0, h:0, cell:70, offX:0, offY:0, grid:true};
+        last = {id:'map' + Date.now().toString(36) + Math.random().toString(36).slice(2,4), nom:f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' '), src:url, w:0, h:0, cell:70, offX:0, offY:0, grid:true, cat:catNewItem('map')};
         MAPS().push(last);
       }
       save();
@@ -1007,6 +1028,8 @@ const DEFAULT = {
   music:{playlistId:''},
   spotifyClientId:'',
   cartesBiblio:[],
+  imageCats:[],
+  mapCats:[],
   split:'both',
   skin:'nuit',
   codeJoueurs:'',
@@ -1035,7 +1058,7 @@ const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio'];                                   // réservés au MJ
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
@@ -1274,7 +1297,7 @@ function renderLeft(){
         <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
         <button class="btn" id="playersBtn">Players</button>
         <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
-      <div class="lib" id="lib"></div>
+      <div id="libWrap"><div id="libCats"></div><div class="lib" id="lib"></div></div>
       <div class="add">
         <input type="text" id="imgUrl" placeholder="Paste an image link (https://…)">
         <button class="btn primary" id="addUrl">Add</button>
@@ -1293,7 +1316,7 @@ function renderLeft(){
         <label for="spId">Spotify Client ID</label><input id="spId" placeholder="From developer.spotify.com > your app > Settings" value="${esc(state.spotifyClientId)}" autocomplete="off">
         <label for="dcUrl">Discord channel</label><div class="dc-row"><input id="dcUrl" placeholder="Channel link: https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Display name" value="${esc(state.discord.label)}"></div>
       </div>
-      ${sb ? `<div class="pop-foot"><button class="btn" id="logoutBtn">Sign out</button></div>` : ''}
+      <div class="pop-foot"><span class="ver">Site version ${SITE_VERSION}</span>${sb ? `<button class="btn" id="logoutBtn">Sign out</button>` : ''}</div>
     </div>
     <div class="pane">
       <div class="pane-h"><h2>Map & notes</h2><span class="sp"></span>
@@ -1405,18 +1428,91 @@ document.addEventListener('mousedown', e => {
   if(pop && !pop.contains(e.target) && !(btn && btn.contains(e.target))) toggleSettings(false);
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && settingsOpen) toggleSettings(false); });
+/* ============ Catégories (bibliothèques d'images et de cartes) ============ */
+const CAT_FILTER = {scene:'all', map:'all'};            // filtre propre à cet écran
+const CAT_KEY = {scene:'imageCats', map:'mapCats'};
+function catList(kind){ return (state[CAT_KEY[kind]] = state[CAT_KEY[kind]] || []); }
+function catNewItem(kind){ const f = CAT_FILTER[kind]; return f !== 'all' && f !== '' && catList(kind).some(c => c.id === f) ? f : ''; }
+function catFilter(kind, items){
+  const f = CAT_FILTER[kind];
+  if(f === 'all') return items;
+  if(f === '') return items.filter(i => !i.cat || !catList(kind).some(c => c.id === i.cat));
+  return items.filter(i => i.cat === f);
+}
+function catBarHTML(kind, items){
+  const cats = catList(kind), f = CAT_FILTER[kind];
+  if(f !== 'all' && f !== '' && !cats.some(c => c.id === f)) CAT_FILTER[kind] = 'all';
+  const count = id => items.filter(i => id === '' ? (!i.cat || !cats.some(c => c.id === i.cat)) : i.cat === id).length;
+  const unc = count('');
+  const chip = (id, label, n, custom) => `<span class="cat-chip ${CAT_FILTER[kind] === id ? 'on' : ''}" data-cat="${esc(id)}" ${id !== 'all' ? 'data-drop="1"' : ''}>
+      <button class="cat-b" data-pick="${esc(id)}">${esc(label)}<span class="cat-n">${n}</span></button>${custom && CAT_FILTER[kind] === id ? `<button class="cat-ed" data-catren="${esc(id)}" title="Rename" aria-label="Rename ${esc(label)}">✎</button><button class="cat-ed" data-delcat="${esc(id)}" title="Delete category" aria-label="Delete ${esc(label)}">✕</button>` : ''}</span>`;
+  return `<div class="cat-bar" data-kind="${kind}">
+    ${chip('all', 'All', items.length)}
+    ${cats.map(c => chip(c.id, c.nom, count(c.id), true)).join('')}
+    ${cats.length && unc ? chip('', 'Uncategorized', unc) : ''}
+    <button class="cat-add" data-addcat="1">+ Category</button>
+  </div>`;
+}
+function catSelectHTML(kind, item){
+  const cats = catList(kind);
+  if(!cats.length) return '';
+  return `<select class="cat-sel" data-catfor="${esc(item.id)}" aria-label="Category of ${esc(item.name || item.nom || '')}">
+    <option value="">Uncategorized</option>${cats.map(c => `<option value="${esc(c.id)}" ${item.cat === c.id ? 'selected' : ''}>${esc(c.nom)}</option>`).join('')}</select>`;
+}
+/* Branche la barre et les menus : getItems() → éléments, rerender() → redessine */
+function catBind(root, kind, getItems, rerender){
+  const bar = root.querySelector(`.cat-bar[data-kind="${kind}"]`); if(!bar) return;
+  const setCat = (id, cat) => { const it = getItems().find(i => i.id === id); if(it){ it.cat = cat; save(); rerender(); } };
+  bar.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { CAT_FILTER[kind] = b.dataset.pick; rerender(); });
+  const inline = (el, value, done) => {
+    const inp = document.createElement('input'); inp.className = 'cat-in'; inp.value = value; inp.placeholder = 'Category name';
+    el.replaceWith(inp); inp.focus(); inp.select();
+    let fin = false;
+    const end = ok => { if(fin) return; fin = true; done(ok ? inp.value.trim() : null); };
+    inp.onkeydown = e => { if(e.key === 'Enter') end(true); if(e.key === 'Escape') end(false); };
+    inp.onblur = () => end(true);
+  };
+  bar.querySelector('[data-addcat]').onclick = e => inline(e.currentTarget, '', name => {
+    if(name){ const c = {id:'c' + Date.now().toString(36), nom:name}; catList(kind).push(c); CAT_FILTER[kind] = c.id; save(); }
+    rerender();
+  });
+  bar.querySelectorAll('[data-catren]').forEach(b => b.onclick = e => {
+    const c = catList(kind).find(x => x.id === b.dataset.catren); if(!c) return;
+    inline(e.currentTarget.closest('.cat-chip'), c.nom, name => { if(name){ c.nom = name; save(); } rerender(); });
+  });
+  bar.querySelectorAll('[data-delcat]').forEach(b => b.onclick = () => {
+    if(b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Delete?'; b.classList.add('warn'); setTimeout(() => { b.dataset.sure = ''; b.textContent = '✕'; b.classList.remove('warn'); }, 3000); return; }
+    const id = b.dataset.delcat;
+    state[CAT_KEY[kind]] = catList(kind).filter(c => c.id !== id);
+    getItems().forEach(i => { if(i.cat === id) i.cat = ''; });
+    CAT_FILTER[kind] = 'all'; save(); rerender(); toast('Category deleted · its items are now uncategorized');
+  });
+  // glisser une vignette sur une catégorie pour l'y ranger
+  bar.querySelectorAll('[data-drop]').forEach(ch => {
+    ch.ondragover = e => { if(e.dataTransfer.types.includes('text/x-gm-' + kind)){ e.preventDefault(); ch.classList.add('over'); } };
+    ch.ondragleave = () => ch.classList.remove('over');
+    ch.ondrop = e => { e.preventDefault(); ch.classList.remove('over'); const id = e.dataTransfer.getData('text/x-gm-' + kind); if(id) setCat(id, ch.dataset.cat); };
+  });
+  root.querySelectorAll('[draggable][data-dragid]').forEach(el => el.ondragstart = e => { e.dataTransfer.setData('text/x-gm-' + kind, el.dataset.dragid); e.dataTransfer.effectAllowed = 'move'; });
+  root.querySelectorAll('.cat-sel[data-catfor]').forEach(sel => { sel.onclick = e => e.stopPropagation(); sel.onchange = () => setCat(sel.dataset.catfor, sel.value); });
+}
+
 function addImage(name, src, path){
   const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-  state.images.push(path ? {id,name,src,path} : {id,name,src}); save(); renderLib(); toast('Image added: '+name);
+  const cat = catNewItem('scene');
+  state.images.push(Object.assign({id,name,src,cat}, path ? {path} : {})); save(); renderLib(); toast('Image added: '+name);
 }
 function renderLib(){
   const cur = state.images.find(i => i.id===state.current), ci = $('#capInput');
   if(ci){ ci.value = cur ? cur.name : ''; ci.disabled = !cur; }
-  $('#lib').innerHTML = state.images.map(i => `
-    <button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Afficher aux joueurs">
-      <img src="${esc(i.src)}" alt=""><span class="n">${esc(i.name)}</span>
-      <span class="x" data-del="${i.id}" role="button" aria-label="Delete">✕</span></button>`).join('')
-    || '<p style="color:var(--muted);margin:0">Library is empty.</p>';
+  const bar = $('#libCats'); if(bar){ bar.innerHTML = catBarHTML('scene', state.images); }
+  const shown = catFilter('scene', state.images);
+  $('#lib').innerHTML = shown.map(i => `
+    <div class="sc-it"><button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Show to players" draggable="true" data-dragid="${i.id}">
+      <img src="${esc(i.src)}" alt="" draggable="false"><span class="n">${esc(i.name)}</span>
+      <span class="x" data-del="${i.id}" role="button" aria-label="Delete">✕</span></button>${catSelectHTML('scene', i)}</div>`).join('')
+    || `<p style="color:var(--muted);margin:0">${state.images.length ? 'No image in this category yet. Upload one, or drag an image onto the category.' : 'Library is empty.'}</p>`;
+  catBind($('#libWrap'), 'scene', () => state.images, renderLib);
   $('#lib').querySelectorAll('.thumb').forEach(b => b.onclick = e => {
     const del = e.target.dataset.del;
     if(del){
