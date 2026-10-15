@@ -213,8 +213,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bm[data-tool="ruler"]{cursor:crosshair}
 .bm-world{position:absolute;left:0;top:0;transform-origin:0 0}
 .bm-img{display:block;width:100%;height:100%;max-width:none;pointer-events:none}
-.bm-grid{position:absolute;inset:0;pointer-events:none;
-  background-image:linear-gradient(to right, rgba(0,0,0,.45) var(--gw,1px), transparent var(--gw,1px)),linear-gradient(to bottom, rgba(0,0,0,.45) var(--gw,1px), transparent var(--gw,1px))}
+.bm-grid{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
 .bm.far .tok-n{display:none}
 .bm.far .tok:hover .tok-n,.bm.far .tok.sel .tok-n{display:block}
 .bm-ruler{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
@@ -240,7 +239,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bm-sep{height:1px;background:var(--line);margin:2px 4px}
 .bm-measure{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--gold);color:var(--text);border-radius:6px;padding:3px 8px;font:600 13px var(--f-body);font-variant-numeric:tabular-nums;white-space:nowrap}
 .bm-panel{position:absolute;top:10px;right:10px;width:min(280px,calc(100% - 70px));max-height:calc(100% - 20px);overflow-y:auto;z-index:10;
-  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.5);padding:10px 12px;display:grid;gap:6px;font-size:13px;cursor:default}
+  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.5);padding:10px 12px;display:grid;grid-auto-rows:max-content;gap:6px;font-size:13px;cursor:default}
 .bm-panel label{color:var(--muted);display:flex;justify-content:space-between}
 .bm-panel input:not([type=checkbox]):not([type=range]):not([type=color]),.bm-panel select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;width:100%;min-width:0}
 .bm-panel input[type=range]{accent-color:var(--gold);width:100%}
@@ -267,6 +266,9 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .map-del{position:absolute;top:4px;right:4px;min-width:22px;height:22px;border-radius:11px;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:0 6px;opacity:0}
 .map-it:hover .map-del,.map-del:focus-visible,.map-it.confirm .map-del{opacity:1}
 .map-it.confirm .map-del{background:var(--danger)}
+.grid-seg button{display:inline-flex;align-items:center;gap:5px}
+.gc{width:10px;height:10px;border-radius:2px;border:1px solid var(--line)}
+.gc-black{background:#111}.gc-grey{background:#cdcdcd}.gc-white{background:#f6efde}
 .bm-sub{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
 .bm-lib{width:min(320px,calc(100% - 70px))}
 .lib-g{display:grid;gap:6px}
@@ -480,7 +482,7 @@ function mountMap(host, key, opts){
   const editable = !!opts.editable;
   host.innerHTML = `
     <div class="bm" data-tool="move">
-      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><div class="bm-grid"></div><div class="bm-tokens"></div><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><svg class="bm-grid" xmlns="http://www.w3.org/2000/svg"><defs><pattern patternUnits="userSpaceOnUse"><path fill="none"/></pattern></defs><rect width="100%" height="100%"/></svg><div class="bm-tokens"></div><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
       <div class="bm-tools" role="toolbar" aria-label="Map tools">
         <button data-tool="move" class="on" title="Move (map and tokens)" aria-label="Move">${ICONS.move}</button>
         <button data-tool="ruler" title="Ruler: drag to measure" aria-label="Ruler">${ICONS.ruler}</button>
@@ -506,7 +508,7 @@ function mountMap(host, key, opts){
     if(!view) return;
     world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; MAP_VIEWS[key] = view;
     root.style.setProperty('--inv', 1/view.s);
-    root.style.setProperty('--gw', Math.max(1, 1/view.s) + 'px');          // trait du quadrillage toujours visible
+    styleGrid();                                                            // trait du quadrillage à épaisseur constante à l'écran
     root.classList.toggle('far', C().cell * view.s < 34);                   // noms masqués quand les jetons sont minuscules
   }
   function fit(){
@@ -519,12 +521,25 @@ function mountMap(host, key, opts){
 
   function canMove(t){ return editable || (t.type === 'pj' && t.nom === opts.me); }
 
+  const GRID_COLORS = {black:'rgba(0,0,0,.6)', grey:'rgba(205,205,205,.7)', white:'rgba(246,239,222,.8)'};
+  function styleGrid(){
+    const c = C(), path = grid.querySelector('path'); if(!path || !c) return;
+    const k = view ? 1 / view.s : 1, w = (c.gridWeight === 'thick' ? 2.5 : 1) * k;
+    path.setAttribute('stroke', GRID_COLORS[c.gridColor] || GRID_COLORS.black);
+    path.setAttribute('stroke-width', w);
+    path.setAttribute('stroke-dasharray', c.gridStyle === 'dashed' ? `${c.cell / 8} ${c.cell / 12}` : 'none');
+  }
   function renderGrid(){
     const c = C();
     world.style.width = c.w + 'px'; world.style.height = c.h + 'px';
-    grid.hidden = !c.grid;
-    grid.style.backgroundSize = `${c.cell}px ${c.cell}px`;
-    grid.style.backgroundPosition = `${c.offX}px ${c.offY}px`;
+    grid.style.display = c.grid ? '' : 'none';
+    grid.setAttribute('width', c.w); grid.setAttribute('height', c.h);
+    const pat = grid.querySelector('pattern'), pid = 'g' + key;
+    pat.id = pid; pat.setAttribute('width', c.cell); pat.setAttribute('height', c.cell);
+    pat.setAttribute('patternTransform', `translate(${c.offX} ${c.offY})`);
+    pat.querySelector('path').setAttribute('d', `M0,0 H${c.cell} M0,0 V${c.cell}`);
+    grid.querySelector('rect').setAttribute('fill', `url(#${pid})`);
+    styleGrid();
     ruler.setAttribute('viewBox', `0 0 ${c.w} ${c.h}`); ruler.setAttribute('width', c.w); ruler.setAttribute('height', c.h);
   }
   function renderTokens(){
@@ -848,7 +863,7 @@ function mountMap(host, key, opts){
   }
   /* Bibliothèque de cartes (privée) : chaque carte garde son quadrillage et ses jetons */
   const MAPS = () => (state.cartesBiblio = state.cartesBiblio || []);
-  const GRID_KEYS = ['src','path','w','h','cell','offX','offY','grid'];
+  const GRID_KEYS = ['src','path','w','h','cell','offX','offY','grid','gridColor','gridStyle','gridWeight'];
   function ensureMapLib(){
     const c = C();
     if(!c.mapId || !MAPS().some(m => m.id === c.mapId)){
@@ -903,6 +918,12 @@ function mountMap(host, key, opts){
         <input id="mpUrl" placeholder="…or paste an image link"></div>
       <div class="bm-sub">Grid for this map</div>
       <label class="bm-check"><input id="mpGrid" type="checkbox" ${c.grid?'checked':''}> Show grid</label>
+      <label>Color</label>
+      <div class="seg grid-seg" data-opt="gridColor">${[['black','Black'],['grey','Light grey'],['white','Off-white']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridColor||'black')===v?'on':''}"><span class="gc gc-${v}"></span>${l}</button>`).join('')}</div>
+      <label>Lines</label>
+      <div class="seg grid-seg" data-opt="gridStyle">${[['solid','Solid'],['dashed','Dashed']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridStyle||'solid')===v?'on':''}">${l}</button>`).join('')}</div>
+      <label>Thickness</label>
+      <div class="seg grid-seg" data-opt="gridWeight">${[['normal','Normal'],['thick','Thick']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridWeight||'normal')===v?'on':''}">${l}</button>`).join('')}</div>
       <label for="mpCell">Square size <output id="mpCellO">${c.cell} px</output></label><input id="mpCell" type="range" min="16" max="300" value="${c.cell}">
       <label for="mpOx">Horizontal offset <output id="mpOxO">${c.offX} px</output></label><input id="mpOx" type="range" min="0" max="${c.cell}" value="${c.offX}">
       <label for="mpOy">Vertical offset <output id="mpOyO">${c.offY} px</output></label><input id="mpOy" type="range" min="0" max="${c.cell}" value="${c.offY}">
@@ -940,6 +961,10 @@ function mountMap(host, key, opts){
       if(last){ switchMap(last.id); toast(files.length > 1 ? files.length + ' maps added' : 'Map added'); }
     };
     pCfg.querySelector('#mpGrid').onchange = e => upd({grid:e.target.checked});
+    pCfg.querySelectorAll('.grid-seg').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => {
+      g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      upd({[g.dataset.opt]: b.dataset.v});
+    }));
     pCfg.querySelector('#mpCell').oninput = e => {
       const v = +e.target.value; pCfg.querySelector('#mpCellO').textContent = v + ' px';
       pCfg.querySelector('#mpOx').max = v; pCfg.querySelector('#mpOy').max = v; upd({cell:v});
@@ -1233,7 +1258,10 @@ function renderLeft(){
       onMove:t => {
         sendJeton(t.id, t.x, t.y, true);
         if(sb) sb.rpc('deplacer_jeton', {code:playerCode, joueur:me, jeton:t.id, x:t.x, y:t.y})
-          .then(({data, error}) => { if(error || data === false) toast("Move not saved: this isn't your token."); });
+          .then(({data, error}) => {
+            if(error) toast('Move not saved: ' + (/function|schema cache/i.test(error.message || '') ? 'the server is missing the token-move setup. Tell your GM.' : (error.message || 'server error.')));
+            else if(data === false) toast("Move not saved: this isn't your token.");
+          });
         else save();
       }
     });
@@ -1679,6 +1707,9 @@ async function boot(){
     for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);   // champs manquants ou vides
     renderAll();
     ensureLive();                                         // écoute les déplacements des joueurs
+    // Filet de sécurité : la base signale chaque déplacement enregistré par un joueur
+    sb.channel('db-etat').on('postgres_changes', {event:'UPDATE', schema:'public', table:'etat', filter:'id=eq.public'},
+      payload => mergeFromDb(payload.new && payload.new.data)).subscribe();
     // publie l'état de départ, ou les nouveautés d'une mise à jour du site (ex. liste des joueurs)
     if(firstRun || PUBLIC_KEYS.some(k => !(k in pub))) push();
   } else {
@@ -1704,10 +1735,13 @@ async function boot(){
     let asked = false; try{ asked = sessionStorage.getItem('table-mj-jeton-propose') === '1'; }catch(e){}
     if(mine && !mine.img && !asked){ try{ sessionStorage.setItem('table-mj-jeton-propose','1'); }catch(e){} openMyToken(true); }
     // Contrôle régulier : rattrape un message manqué, et ferme la vue si le MJ change le code
-    setInterval(async () => {
+    const check = async () => {
+      if(document.hidden) return;
       const d = await readTable(code);
       if(d) receive(d); else { try{ sessionStorage.removeItem('table-mj-code'); }catch(e){} location.reload(); }
-    }, 30000);
+    };
+    setInterval(check, 8000);
+    document.addEventListener('visibilitychange', check);
   }
 }
 async function readTable(code){
@@ -1771,6 +1805,22 @@ function openMyToken(first){
   };
 }
 /* Un joueur a changé sa couleur ou son image */
+/* MJ : récupère ce que les joueurs ont modifié eux-mêmes (position de leur jeton, couleur, image) */
+function mergeFromDb(d){
+  if(!d || !state.carte) return;
+  let changed = false;
+  if(d.carte && d.carte.mapId === state.carte.mapId){
+    (d.carte.jetons || []).filter(t => t.type === 'pj').forEach(t => {
+      const mine = state.carte.jetons.find(j => j.id === t.id);
+      if(mine && (mine.x !== t.x || mine.y !== t.y)){ mine.x = t.x; mine.y = t.y; currentMap && currentMap.moveToken(t.id, t.x, t.y); }
+    });
+  }
+  (d.joueurs || []).forEach(r => {
+    const mine = rosterOf(r.nom);
+    if(mine && (mine.couleur !== r.couleur || (mine.img || '') !== (r.img || ''))){ mine.couleur = r.couleur; mine.img = r.img || ''; changed = true; }
+  });
+  if(changed && currentMap) currentMap.refresh();
+}
 function applyJoueur(p){
   const r = rosterOf(p.nom); if(!r) return;
   if(p.couleur) r.couleur = p.couleur;
