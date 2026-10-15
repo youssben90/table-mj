@@ -92,6 +92,20 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
 .embed .f .k{display:block;font-size:11px;color:var(--muted);font-weight:700}
 .embed code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);padding:1px 4px;border-radius:3px}
 .crit{color:var(--ok);font-weight:700}
+img.av{object-fit:cover;background:var(--panel-2)}
+.txt pre,.embed pre{white-space:pre-wrap;font:12px/1.4 var(--f-mono);background:var(--code-bg);padding:6px 8px;border-radius:4px;margin:4px 0}
+.txt code,.embed code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);padding:1px 4px;border-radius:3px}
+.embed{position:relative;overflow-wrap:anywhere}
+.embed .f .full{grid-column:1/-1}
+.e-au{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.e-de{margin-top:2px}
+.e-fo{font-size:11px;color:var(--muted);margin-top:6px}
+.e-th{float:right;width:48px;height:48px;object-fit:cover;border-radius:4px;margin:0 0 4px 8px}
+.e-im{display:block;max-width:100%;max-height:220px;border-radius:4px;margin-top:6px}
+.ment{color:var(--blurple);background:rgba(125,134,232,.15);border-radius:3px;padding:0 2px}
+.emo{width:18px;height:18px;vertical-align:-4px}
+.quote{display:block;border-left:3px solid var(--line);padding-left:8px;color:var(--muted)}
+.txt a,.embed a{color:var(--blurple)}
 
 /* ---------- Admin ---------- */
 .console{grid-template-rows:auto minmax(0,1fr)}
@@ -320,7 +334,7 @@ iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background
         <div class="pane-b"><div class="scene" id="scene"></div></div>
       </div>
       <div class="pane">
-        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag ex">Sample · bot not connected</span></div>
+        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag" id="feedTag"></span></div>
         <div class="pane-b"><div class="feed" id="feed"></div></div>
       </div>
     </section>
@@ -992,7 +1006,7 @@ const FEED = [
   {who:'Avrae', bot:true, c:'#7d86e8', when:'20:44', embed:{t:'Thorin makes a Perception check!', lines:[
     ['Result','<code>1d20 (<span class="crit">20</span>) + 4</code> = <b>24</b>']]}}
 ];
-function renderFeed(){
+function renderSampleFeed(){
   $('#feed').innerHTML = FEED.map(m => `
     <div class="msg"><div class="av" style="background:${m.c}">${m.who[0]}</div><div style="min-width:0">
       <div class="who">${esc(m.who)}${m.bot?'<span class="bot">BOT</span>':''}<span class="when">${m.when}</span></div>
@@ -1000,6 +1014,90 @@ function renderFeed(){
       ${m.embed?`<div class="embed"><div class="t">${esc(m.embed.t)}</div><div class="f">${m.embed.lines.map(([k,v])=>`<div><span class="k">${k}</span>${v}</div>`).join('')}</div></div>`:''}
     </div></div>`).join('');
   const f=$('#feed'); f.scrollTop=f.scrollHeight;
+}
+
+/* ============ Discord en direct ============ */
+let feedTimer = null, feedSig = '', feedBusy = false;
+function feedTag(text, cls){ const t = $('#feedTag'); if(t){ t.textContent = text; t.className = 'tag ' + (cls || ''); } }
+function feedEmpty(title, text){
+  feedSig = '';
+  $('#feed').innerHTML = `<div class="empty"><div><b>${esc(title)}</b>${esc(text)}</div></div>`;
+}
+function renderFeed(){
+  if(!sb){ feedTag('Sample · offline', 'ex'); renderSampleFeed(); return; }
+  if(!feedTimer){
+    pollFeed();
+    feedTimer = setInterval(() => { if(!document.hidden) pollFeed(); }, 4000);
+  }
+}
+async function pollFeed(){
+  if(feedBusy) return; feedBusy = true;
+  try{
+    const headers = {};
+    let url = '/api/discord';
+    if(isAdmin){
+      const ses = (await sb.auth.getSession()).data.session;
+      if(ses) headers.Authorization = 'Bearer ' + ses.access_token;
+    } else url += '?code=' + encodeURIComponent(playerCode);
+    const r = await fetch(url, {headers});
+    if(r.status === 404 && !(r.headers.get('content-type') || '').includes('json')){
+      feedTag('Not set up', ''); feedEmpty('Discord bot not set up yet', isAdmin ? 'Add the bot file to the site to show your channel here.' : 'Your GM is still setting this up.'); return;
+    }
+    const data = await r.json().catch(() => ({}));
+    if(data.error){
+      feedTag(data.error === 'rate_limited' ? 'Live · slowing down' : 'Not connected', data.error === 'rate_limited' ? '' : 'err');
+      if(data.error !== 'rate_limited') feedEmpty('Discord unavailable', isAdmin ? data.message : 'Your GM needs to check the Discord settings.');
+      return;
+    }
+    if(!data.channel && !(data.messages || []).length && !(state.discord && state.discord.channel)){
+      feedTag('No channel', ''); feedEmpty('No channel chosen', isAdmin ? 'Paste a channel link in ⚙ Settings.' : 'Your GM hasn\'t picked a channel yet.'); return;
+    }
+    feedTag('Live', 'ok');
+    if(data.channel && !(state.discord && state.discord.label)) $('#chanTitle').textContent = '#' + data.channel;
+    const sig = JSON.stringify(data.messages);
+    if(sig === feedSig) return;
+    feedSig = sig;
+    const f = $('#feed'), atBottom = f.scrollHeight - f.scrollTop - f.clientHeight < 60;
+    f.innerHTML = data.messages.length ? data.messages.map(renderMsg).join('') : '<div class="empty"><div><b>No messages yet</b>Messages posted in the channel will appear here.</div></div>';
+    if(atBottom || !f.dataset.init){ f.scrollTop = f.scrollHeight; f.dataset.init = '1'; }
+  }catch(e){
+    feedTag('Offline', 'err');
+  }finally{ feedBusy = false; }
+}
+/* Mise en forme Discord (gras, italique, code, mentions, émojis, liens) */
+function md(text, mentions){
+  if(!text) return '';
+  const keep = [];
+  let t = esc(text);
+  t = t.replace(/```(?:\w+\n)?([\s\S]*?)```/g, (_, c) => { keep.push(`<pre>${c.replace(/^\n|\n$/g,'')}</pre>`); return `\u0000${keep.length-1}\u0000`; });
+  t = t.replace(/`([^`\n]+)`/g, (_, c) => { keep.push(`<code>${c}</code>`); return `\u0000${keep.length-1}\u0000`; });
+  t = t.replace(/&lt;@!?(\d+)&gt;/g, (_, id) => { const u = (mentions || []).find(m => m.id === id); return `<span class="ment">@${esc(u ? u.name : 'someone')}</span>`; });
+  t = t.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_, an, n, id) => `<img class="emo" alt=":${n}:" src="https://cdn.discordapp.com/emojis/${id}.${an ? 'gif' : 'png'}?size=32">`);
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  t = t.replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<u>$1</u>')
+       .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<i>$2</i>').replace(/(^|\W)_(?!\s)(.+?)_(?=\W|$)/g, '$1<i>$2</i>').replace(/~~(.+?)~~/g, '<s>$1</s>');
+  t = t.replace(/^#{1,3} (.+)$/gm, '<b>$1</b>').replace(/^&gt; (.*)$/gm, '<span class="quote">$1</span>');
+  t = t.replace(/\n/g, '<br>');
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => keep[+i]);
+}
+function renderMsg(m){
+  const when = new Date(m.at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const embeds = (m.embeds || []).map(e => `
+    <div class="embed" style="${e.color ? 'border-left-color:' + esc(e.color) : ''}">
+      ${e.thumbnail ? `<img class="e-th" src="${esc(e.thumbnail)}" alt="">` : ''}
+      ${e.author ? `<div class="e-au">${esc(e.author)}</div>` : ''}
+      ${e.title ? `<div class="t">${md(e.title, m.mentions)}</div>` : ''}
+      ${e.description ? `<div class="e-de">${md(e.description, m.mentions)}</div>` : ''}
+      ${e.fields.length ? `<div class="f">${e.fields.map(f => `<div class="${f.inline ? '' : 'full'}"><span class="k">${md(f.name, m.mentions)}</span>${md(f.value, m.mentions)}</div>`).join('')}</div>` : ''}
+      ${e.image ? `<img class="e-im" src="${esc(e.image)}" alt="">` : ''}
+      ${e.footer ? `<div class="e-fo">${esc(e.footer)}</div>` : ''}
+    </div>`).join('');
+  return `<div class="msg"><img class="av" src="${esc(m.avatar)}" alt="" onerror="this.style.visibility='hidden'"><div style="min-width:0">
+    <div class="who">${esc(m.author)}${m.bot ? '<span class="bot">BOT</span>' : ''}<span class="when">${when}</span></div>
+    ${m.content ? `<div class="txt">${md(m.content, m.mentions)}</div>` : ''}
+    ${(m.images || []).map(u => `<img class="e-im" src="${esc(u)}" alt="">`).join('')}
+    ${embeds}
+  </div></div>`;
 }
 
 /* ============ Colonne gauche ============ */
@@ -1211,7 +1309,7 @@ function renderMusic(){
 /* ============ Rendu ============ */
 function renderChannel(){
   const d = state.discord || {};
-  $('#chanTitle').textContent = '#' + (d.label || 'salon');
+  $('#chanTitle').textContent = d.label ? '#' + d.label : 'Discord';
 }
 function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
 function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
