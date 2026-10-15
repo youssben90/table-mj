@@ -180,6 +180,11 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .sp-bar div{height:100%;background:var(--gold);width:0;transition:width .5s linear}
 .sp-pick{display:flex;gap:8px;align-items:center;min-width:0}
 .sp-out{padding:4px 8px}
+.sp-dev{cursor:pointer;background:var(--panel-2)}
+.sp-dev:hover{border-color:var(--gold)}
+.sp-list.sp-devs{left:auto;right:12px;transform:none;width:min(340px,calc(100vw - 32px))}
+.sp-row.dev{grid-template-columns:28px minmax(0,1fr) auto}
+.sp-row:disabled{opacity:.45;cursor:not-allowed}
 .sp-list{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));max-height:min(420px,60vh);display:flex;flex-direction:column;
   background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 -12px 40px rgba(0,0,0,.5);z-index:30}
 .sp-lh{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -1407,10 +1412,11 @@ async function spPoll(){
   renderMusicNow();
 }
 async function spDeviceId(){
-  if(sp.player && sp.player.device && sp.player.device.id) return sp.player.device.id;
+  const want = state.music && state.music.device;
+  if(sp.player && sp.player.device && sp.player.device.id && (!want || sp.player.device.name === want)) return sp.player.device.id;
   const j = await spApi('/me/player/devices');
   sp.devices = (j && j.devices) || [];
-  const d = sp.devices.find(x => x.is_active) || sp.devices.find(x => !x.is_restricted);
+  const d = (want && sp.devices.find(x => x.name === want && !x.is_restricted)) || sp.devices.find(x => x.is_active) || sp.devices.find(x => !x.is_restricted);
   if(!d) throw {status:404};
   return d.id;
 }
@@ -1456,9 +1462,10 @@ function renderMusic(){
       <button class="btn" id="mList" aria-expanded="false">Tracks ▾</button>
       <button class="btn" id="mPlPlay" title="Play this playlist from the start">Play playlist</button>
     </div>
-    <div class="vol"><span id="mDev" class="tag"></span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="50" aria-label="Volume">
+    <div class="vol"><button id="mDev" class="tag sp-dev" title="Choose where the music plays" aria-expanded="false"></button><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="50" aria-label="Volume">
       <button class="btn sp-out" id="spOut" title="Disconnect Spotify">⏏</button></div>
-    <div class="sp-list" id="mPop" hidden></div>`;
+    <div class="sp-list" id="mPop" hidden></div>
+    <div class="sp-list sp-devs" id="mDevPop" hidden></div>`;
 
   $('#mPlay').onclick = () => spDo(async () => {
     if(sp.player && sp.player.is_playing) await spApi('/me/player/pause', {method:'PUT'});
@@ -1473,7 +1480,9 @@ function renderMusic(){
   $('#mPl').onchange = e => { state.music = Object.assign({}, state.music, {playlistId:e.target.value}); save(); sp.filter = ''; if(sp.listOpen) renderTrackList(); };
   $('#mPlPlay').onclick = () => { const pl = curPlaylist(); if(pl) spPlay({context_uri:pl.uri}); };
   $('#mList').onclick = e => { e.stopPropagation(); sp.listOpen = !sp.listOpen; $('#mList').setAttribute('aria-expanded', sp.listOpen); $('#mPop').hidden = !sp.listOpen; if(sp.listOpen) renderTrackList(); };
+  $('#mDev').onclick = e => { e.stopPropagation(); const pop = $('#mDevPop'); if(pop.hidden) openDevices(); else pop.hidden = true; };
   $('#spOut').onclick = () => { sp.tok = null; spStore(); renderMusic(); toast('Spotify disconnected'); };
+  if(!sp.devBound) sp.devBound = true, document.addEventListener('mousedown', e => { if(!e.target.closest('#mDevPop,#mDev')){ const p = $('#mDevPop'); if(p) p.hidden = true; } });
   if(!sp.docBound) sp.docBound = true, document.addEventListener('mousedown', e => { if(sp.listOpen && !e.target.closest('#mPop,#mList')){ sp.listOpen = false; const p = $('#mPop'); if(p) p.hidden = true; } });
 
   (async () => {
@@ -1491,6 +1500,27 @@ function renderMusic(){
   })();
   spPoll();
   clearInterval(sp.timer); sp.timer = setInterval(spPoll, 3000);
+}
+async function openDevices(){
+  const pop = $('#mDevPop'); pop.hidden = false;
+  pop.innerHTML = '<div class="sp-lh"><b>Play music on</b></div><div class="sp-items"><p class="bm-hint">Looking for devices…</p></div>';
+  const box = pop.querySelector('.sp-items');
+  try{
+    const j = await spApi('/me/player/devices');
+    sp.devices = (j && j.devices) || [];
+  }catch(e){ box.innerHTML = `<p class="bm-hint">${esc(spProblem(e))}</p>`; return; }
+  const icon = t => ({Computer:'💻', Smartphone:'📱', Speaker:'🔊', TV:'📺', Tablet:'📱'})[t] || '🎵';
+  box.innerHTML = sp.devices.length ? sp.devices.map(d => `
+    <button class="sp-row dev ${d.is_active ? 'on' : ''}" data-id="${esc(d.id)}" data-n="${esc(d.name)}" ${d.is_restricted ? 'disabled' : ''}>
+      <span class="n">${icon(d.type)}</span><span class="tt">${esc(d.name)}</span><span class="ar">${d.is_active ? 'Playing here' : esc(d.type)}</span></button>`).join('')
+    + '<p class="bm-hint">Missing a device? Open Spotify on it (app or open.spotify.com), then reopen this list.</p>'
+    : '<p class="bm-hint">No device found. Open the Spotify app on your Mac, or open.spotify.com in a browser tab, then try again.</p>';
+  box.querySelectorAll('.dev').forEach(b => b.onclick = () => {
+    state.music = Object.assign({}, state.music, {device:b.dataset.n}); save();
+    pop.hidden = true;
+    spDo(() => spApi('/me/player', {method:'PUT', body:JSON.stringify({device_ids:[b.dataset.id], play: !!(sp.player && sp.player.is_playing)})}));
+    toast('Music will play on ' + b.dataset.n);
+  });
 }
 function curPlaylist(){ const id = $('#mPl') && $('#mPl').value; return sp.playlists.find(p => p.id === id); }
 async function renderTrackList(){
@@ -1531,8 +1561,8 @@ function renderMusicNow(){
   if(img){ art.src = img.url; art.hidden = false; } else art.hidden = true;
   $('#mProg').style.width = it ? Math.min(100, 100 * (p.progress_ms || 0) / (it.duration_ms || 1)) + '%' : '0';
   const dev = p && p.device;
-  $('#mDev').textContent = dev ? '🔈 ' + dev.name : 'No device';
-  $('#mDev').className = 'tag ' + (dev ? 'ok' : 'err');
+  $('#mDev').textContent = (dev ? '🔈 ' + dev.name : 'Choose device') + ' ▾';
+  $('#mDev').className = 'tag sp-dev ' + (dev ? 'ok' : 'err');
   const vol = $('#mVol'); if(dev && typeof dev.volume_percent === 'number' && document.activeElement !== vol) vol.value = dev.volume_percent;
   if(sp.listOpen && it){ $('#mPop').querySelectorAll('.sp-row').forEach(b => b.classList.toggle('on', b.querySelector('.tt').textContent === it.name)); }
 }
