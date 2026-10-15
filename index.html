@@ -250,10 +250,24 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bm-ph{position:sticky;top:-10px;z-index:1;background:var(--panel);margin:-10px -12px 0;padding:10px 12px 6px;display:flex;align-items:center;justify-content:space-between;font-family:var(--f-display);letter-spacing:.06em}
 .bm-x{border:0;background:transparent;color:var(--muted);font-size:14px}
 .bm-row{display:flex;gap:6px}
+.bm-row .btn{white-space:nowrap}
 .bm-hint{margin:0;color:var(--muted);font-size:12px}
 .bm-del{color:var(--danger);margin-top:4px}
 .bm-panel output{color:var(--text);font-variant-numeric:tabular-nums}
 .who-list{display:grid;gap:8px}
+.bm-panel.bm-maps{width:min(380px,calc(100% - 70px))}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.map-it{position:relative;display:grid;gap:4px}
+.map-th{padding:0;border:2px solid var(--line);border-radius:7px;overflow:hidden;aspect-ratio:4/3;background:var(--well)}
+.map-th img{width:100%;height:100%;object-fit:cover;display:block}
+.map-th:hover{border-color:var(--gold)}
+.map-it.on .map-th{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.bm-panel .map-nm{font-size:12px;padding:3px 6px!important}
+.map-cur{position:absolute;top:4px;left:4px;font:600 9px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:var(--gold);color:var(--on-gold);padding:3px 5px;border-radius:4px}
+.map-del{position:absolute;top:4px;right:4px;min-width:22px;height:22px;border-radius:11px;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:0 6px;opacity:0}
+.map-it:hover .map-del,.map-del:focus-visible,.map-it.confirm .map-del{opacity:1}
+.map-it.confirm .map-del{background:var(--danger)}
+.bm-sub{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
 .bm-lib{width:min(320px,calc(100% - 70px))}
 .lib-g{display:grid;gap:6px}
 .lib-gt{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
@@ -473,7 +487,7 @@ function mountMap(host, key, opts){
         <button data-act="fit" title="Fit map to screen" aria-label="Fit to screen">${ICONS.fit}</button>
         ${editable ? `<span class="bm-sep"></span>
         <button data-act="add" title="Token library" aria-label="Token library">${ICONS.add}</button>
-        <button data-act="cfg" title="Map image and grid" aria-label="Map settings">${ICONS.map}</button>` : ''}
+        <button data-act="cfg" title="Maps and grid" aria-label="Maps">${ICONS.map}</button>` : ''}
       </div>
       <div class="bm-measure" hidden></div>
       <div class="bm-panel" data-panel="cfg" hidden></div>
@@ -532,10 +546,11 @@ function mountMap(host, key, opts){
   function render(){
     const c = C();
     if(loadedSrc !== c.src){
+      if(loadedSrc !== null){ view = null; MAP_VIEWS[key] = null; }   // nouvelle carte : recadrer
       loadedSrc = c.src;
       img.onload = () => {
         const nw = img.naturalWidth || c.w, nh = img.naturalHeight || c.h;
-        if(editable && (nw !== c.w || nh !== c.h)){ c.w = nw; c.h = nh; save(); }
+        if(editable && (nw !== c.w || nh !== c.h)){ c.w = nw; c.h = nh; const m = (state.cartesBiblio || []).find(x => x.id === c.mapId); if(m){ m.w = nw; m.h = nh; } save(); }
         renderGrid(); if(!view) fit();
       };
       img.src = c.src;
@@ -831,26 +846,98 @@ function mountMap(host, key, opts){
       save(); toast(base + ' added to the library');
     });
   }
-  function toggleCfg(){
+  /* Bibliothèque de cartes (privée) : chaque carte garde son quadrillage et ses jetons */
+  const MAPS = () => (state.cartesBiblio = state.cartesBiblio || []);
+  const GRID_KEYS = ['src','path','w','h','cell','offX','offY','grid'];
+  function ensureMapLib(){
+    const c = C();
+    if(!c.mapId || !MAPS().some(m => m.id === c.mapId)){
+      const id = c.mapId || 'map' + Date.now().toString(36);
+      c.mapId = id;
+      MAPS().unshift(Object.assign({id, nom: c.src && c.src.startsWith('data:') ? 'Sample map' : 'Current map'}, pickKeys(c, GRID_KEYS)));
+    }
+  }
+  function pickKeys(o, ks){ const r = {}; ks.forEach(k => { if(o[k] !== undefined) r[k] = o[k]; }); return r; }
+  function storeCurrentMap(){
+    const c = C(), m = MAPS().find(x => x.id === c.mapId);
+    if(m){ Object.assign(m, pickKeys(c, GRID_KEYS)); m.jetons = structuredClone(c.jetons); }
+  }
+  function switchMap(id){
+    ensureMapLib();
+    if(C().mapId === id) return;
+    storeCurrentMap();
+    const m = MAPS().find(x => x.id === id); if(!m) return;
+    let jetons = m.jetons ? structuredClone(m.jetons) : null;
+    if(!jetons){
+      // première visite : les personnages joueurs sont posés en ligne en haut à gauche
+      const cell = m.cell || 70, ox = m.offX || 0, oy = m.offY || 0;
+      jetons = C().jetons.filter(t => t.type === 'pj').map((t, i) => Object.assign({}, t, {x: ox + cell * (1 + i), y: oy + cell}));
+    }
+    state.carte = Object.assign({cell:70, offX:0, offY:0, grid:true}, pickKeys(m, GRID_KEYS), {mapId:id, jetons});
+    selected = null; save(); render(); toggleCfg(true);
+    toast('Map: ' + m.nom);
+  }
+  async function addMap(src, nom, path){
+    ensureMapLib(); storeCurrentMap();
+    const id = 'map' + Date.now().toString(36);
+    MAPS().push({id, nom, src, path:path || null, w:0, h:0, cell:70, offX:0, offY:0, grid:true});
+    save(); switchMap(id);
+  }
+  function toggleCfg(keepOpen){
     pTok.hidden = true; pLib.hidden = true; selected = null; renderTokens();
-    if(!pCfg.hidden){ pCfg.hidden = true; return; }
+    if(!pCfg.hidden && keepOpen !== true){ pCfg.hidden = true; return; }
+    ensureMapLib();
     const c = C();
     pCfg.hidden = false;
+    pCfg.classList.add('bm-maps');
     pCfg.innerHTML = `
-      <div class="bm-ph"><b>Map</b><button class="bm-x" aria-label="Close">✕</button></div>
-      <label for="mpUrl">Image</label>
-      <div class="bm-row"><input id="mpUrl" placeholder="Map image link" value="${esc(c.src.startsWith('data:') ? '' : c.src)}"><label class="btn" for="mpFile">Upload</label><input id="mpFile" type="file" accept="image/*" hidden></div>
+      <div class="bm-ph"><b>Maps</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <p class="bm-hint">Click a map to show it to everyone. Each map keeps its own grid and token positions.</p>
+      <div class="map-grid">${MAPS().map(m => `
+        <div class="map-it ${m.id === c.mapId ? 'on' : ''}">
+          <button class="map-th" data-map="${esc(m.id)}" title="Show ${esc(m.nom)}"><img src="${esc(m.src)}" alt="" loading="lazy"></button>
+          <input class="map-nm" data-ren="${esc(m.id)}" value="${esc(m.nom)}" aria-label="Map name">
+          ${m.id === c.mapId ? '<span class="map-cur">On screen</span>' : `<button class="map-del" data-del="${esc(m.id)}" aria-label="Delete ${esc(m.nom)}">✕</button>`}
+        </div>`).join('')}</div>
+      <div class="bm-row"><label class="btn primary" for="mpFile">+ Upload maps</label><input id="mpFile" type="file" accept="image/*" multiple hidden>
+        <input id="mpUrl" placeholder="…or paste an image link"></div>
+      <div class="bm-sub">Grid for this map</div>
       <label class="bm-check"><input id="mpGrid" type="checkbox" ${c.grid?'checked':''}> Show grid</label>
       <label for="mpCell">Square size <output id="mpCellO">${c.cell} px</output></label><input id="mpCell" type="range" min="16" max="300" value="${c.cell}">
       <label for="mpOx">Horizontal offset <output id="mpOxO">${c.offX} px</output></label><input id="mpOx" type="range" min="0" max="${c.cell}" value="${c.offX}">
       <label for="mpOy">Vertical offset <output id="mpOyO">${c.offY} px</output></label><input id="mpOy" type="range" min="0" max="${c.cell}" value="${c.offY}">
       <p class="bm-hint">Line the squares up with the ones drawn on the image. 1 square = 5 ft.</p>`;
-    const upd = patch => { Object.assign(c, patch); save(); renderGrid(); renderTokens(); };
+    const upd = patch => { Object.assign(c, patch); storeCurrentMap(); save(); renderGrid(); renderTokens(); };
     pCfg.querySelector('.bm-x').onclick = () => { pCfg.hidden = true; };
-    pCfg.querySelector('#mpUrl').onchange = e => { const v = e.target.value.trim(); if(v){ upd({src:v, path:null}); view = null; render(); } };
+    pCfg.querySelectorAll('[data-map]').forEach(b => b.onclick = () => switchMap(b.dataset.map));
+    pCfg.querySelectorAll('[data-ren]').forEach(i => i.onchange = e => {
+      const m = MAPS().find(x => x.id === i.dataset.ren); if(!m) return;
+      m.nom = e.target.value.trim() || m.nom; save();
+    });
+    pCfg.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const m = MAPS().find(x => x.id === b.dataset.del); if(!m) return;
+      const it = b.closest('.map-it');
+      if(!it.classList.contains('confirm')){ it.classList.add('confirm'); b.textContent = 'Delete?'; setTimeout(() => { it.classList.remove('confirm'); b.textContent = '✕'; }, 3000); return; }
+      state.cartesBiblio = MAPS().filter(x => x.id !== m.id);
+      const mpath = m.path || ((m.src || '').match(/\/object\/public\/scenes\/(.+)$/) || [])[1];
+      if(sb && mpath) sb.storage.from('scenes').remove([decodeURIComponent(mpath)]);
+      save(); toggleCfg(true); toast(m.nom + ' deleted');
+    });
+    pCfg.querySelector('#mpUrl').onchange = e => {
+      const v = e.target.value.trim(); if(!v) return;
+      addMap(v, decodeURIComponent(v.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ') || 'New map');
+    };
     pCfg.querySelector('#mpFile').onchange = async e => {
-      const f = e.target.files[0]; if(!f) return;
-      const url = await storeImage(f); if(url){ upd({src:url}); view = null; render(); toggleCfg(); toggleCfg(); }
+      const files = [...e.target.files]; if(!files.length) return;
+      let last = null;
+      for(const f of files){
+        const url = await storeImage(f); if(!url) continue;
+        ensureMapLib(); storeCurrentMap();
+        last = {id:'map' + Date.now().toString(36) + Math.random().toString(36).slice(2,4), nom:f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' '), src:url, w:0, h:0, cell:70, offX:0, offY:0, grid:true};
+        MAPS().push(last);
+      }
+      save();
+      if(last){ switchMap(last.id); toast(files.length > 1 ? files.length + ' maps added' : 'Map added'); }
     };
     pCfg.querySelector('#mpGrid').onchange = e => upd({grid:e.target.checked});
     pCfg.querySelector('#mpCell').oninput = e => {
@@ -894,6 +981,7 @@ const DEFAULT = {
   ambiance:{lieu:'Valbrune', jour:'3rd of Flamerule', heure:'Dusk', meteo:'Light rain', objectif:"Find Master Aldric's missing apprentice"},
   music:{playlistId:''},
   spotifyClientId:'',
+  cartesBiblio:[],
   split:'both',
   skin:'nuit',
   codeJoueurs:'',
@@ -922,7 +1010,7 @@ const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId'];                                   // réservés au MJ
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
