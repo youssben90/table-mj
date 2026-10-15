@@ -168,7 +168,31 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .music .now{min-width:0}
 .music .now .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .music .now .a{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.music select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;max-width:220px}
+.music select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;max-width:220px;min-width:0}
+.music{position:relative}
+.music.off{grid-template-columns:auto minmax(0,1fr) auto}
+.sp-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);font-size:18px}
+.music .ctl button.sm{width:28px;height:28px;font-size:13px;color:var(--muted)}
+.music .ctl button.sm.on{color:var(--gold);border-color:var(--gold)}
+.sp-now{display:flex;gap:10px;align-items:center;width:260px}
+.sp-now img{width:40px;height:40px;border-radius:4px;object-fit:cover;flex:none}
+.sp-bar{height:3px;background:var(--line);border-radius:2px;margin-top:5px;overflow:hidden}
+.sp-bar div{height:100%;background:var(--gold);width:0;transition:width .5s linear}
+.sp-pick{display:flex;gap:8px;align-items:center;min-width:0}
+.sp-out{padding:4px 8px}
+.sp-list{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));max-height:min(420px,60vh);display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 -12px 40px rgba(0,0,0,.5);z-index:30}
+.sp-lh{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.sp-lh b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--f-display)}
+.sp-lh input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+.sp-items{overflow-y:auto;padding:6px;display:grid;gap:2px}
+.sp-items .bm-hint{padding:8px}
+.sp-row{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,.7fr);gap:10px;align-items:center;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:6px}
+.sp-row:hover{background:var(--panel-2)}
+.sp-row.on{background:var(--gold-soft);color:var(--gold)}
+.sp-row .n{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.sp-row .tt,.sp-row .ar{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-row .ar{color:var(--muted);font-size:13px}
 .tracks{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
 .tracks button{flex:none;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap}
 .tracks button.on{border-color:var(--gold);color:var(--gold)}
@@ -361,7 +385,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <script>
 /* ============ État partagé ============ */
 const KEY = 'table-mj-state-v1';
-const isAdmin = location.hash.replace('#','') === 'admin';
+const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
 
 function svgScene(title, a, b, motif){
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>
@@ -863,7 +887,8 @@ const DEFAULT = {
   images: SAMPLE_IMAGES,
   current:'ex1',
   ambiance:{lieu:'Valbrune', jour:'3rd of Flamerule', heure:'Dusk', meteo:'Light rain', objectif:"Find Master Aldric's missing apprentice"},
-  music:{playlist:0, track:0, playing:false, volume:60},
+  music:{playlistId:''},
+  spotifyClientId:'',
   split:'both',
   skin:'nuit',
   codeJoueurs:'',
@@ -892,7 +917,7 @@ const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
   ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio'];                                   // réservés au MJ
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
@@ -1144,6 +1169,7 @@ function renderLeft(){
         <label for="capInput">Caption</label><input id="capInput" class="cap-in" placeholder="Select an image">
         <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Link to a Google Doc or a .txt / .pdf file on Drive" value="${esc(state.notesUrl)}">
         <label for="codeJ">Player code</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="e.g. red-dragon" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'Share this with your players' : 'Player view locked until a code is set'}</span></div>
+        <label for="spId">Spotify Client ID</label><input id="spId" placeholder="From developer.spotify.com > your app > Settings" value="${esc(state.spotifyClientId)}" autocomplete="off">
         <label for="dcUrl">Discord channel</label><div class="dc-row"><input id="dcUrl" placeholder="Channel link: https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Display name" value="${esc(state.discord.label)}"></div>
       </div>
       ${sb ? `<div class="pop-foot"><button class="btn" id="logoutBtn">Sign out</button></div>` : ''}
@@ -1200,6 +1226,13 @@ function renderLeft(){
     state.codeJoueurs = e.target.value.trim();
     save(); renderLeft();
     toast(state.codeJoueurs ? 'Player code: ' + state.codeJoueurs : 'Player view locked (no code)');
+  };
+  $('#spId').onchange = e => {
+    const v = e.target.value.trim();
+    if(v === (state.spotifyClientId || '')) return;
+    state.spotifyClientId = v; save();
+    sp.tok = null; spStore(); renderMusic();
+    toast(v ? 'Spotify Client ID saved' : 'Spotify Client ID removed');
   };
   $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
 
@@ -1275,35 +1308,233 @@ function renderLib(){
   });
 }
 
-/* ============ Spotify (maquette) ============ */
-const PLAYLISTS = [
-  {name:'Exploration', tracks:[['Morning Mists','Ambient'],['Forgotten Path','Ambient'],['Merchant Road','Ambient']]},
-  {name:'Combat', tracks:[['Clash of Blades','Epic'],['Goblin Horde','Epic'],['The Last Rampart','Epic']]},
-  {name:'Tavern', tracks:[['Full Tankard','Folk'],["Minstrel's Jig",'Folk']]},
-  {name:'Dungeon', tracks:[['Stone Echoes','Dark'],['What Crawls Below','Dark']]}
-];
+/* ============ Spotify (vue MJ uniquement) ============
+   Connexion « Authorization Code + PKCE » : aucun secret, tout se passe dans le navigateur du MJ.
+   Le son sort de l'appareil Spotify du MJ (ordinateur, téléphone…), le site ne fait que le piloter. */
+const SP_KEY = 'table-mj-spotify';
+const SP_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+const SP_REDIRECT = location.origin + '/';
+const sp = { tok:null, playlists:[], tracks:{}, player:null, devices:[], timer:null, err:'', busy:false, listOpen:false, filter:'' };
+
+function spLoad(){ try{ sp.tok = JSON.parse(localStorage.getItem(SP_KEY) || 'null'); }catch(e){ sp.tok = null; } }
+function spStore(){ try{ sp.tok ? localStorage.setItem(SP_KEY, JSON.stringify(sp.tok)) : localStorage.removeItem(SP_KEY); }catch(e){} }
+function b64url(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+
+async function spLogin(){
+  const clientId = (state.spotifyClientId || '').trim();
+  if(!clientId){ toast('Paste your Spotify Client ID in ⚙ Settings first.'); return; }
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  const st = b64url(crypto.getRandomValues(new Uint8Array(12)));
+  try{ localStorage.setItem(SP_KEY + '-pkce', JSON.stringify({verifier, clientId, state:st})); }catch(e){}
+  const q = new URLSearchParams({response_type:'code', client_id:clientId, scope:SP_SCOPES, redirect_uri:SP_REDIRECT,
+    code_challenge_method:'S256', code_challenge:challenge, state:st});
+  location.href = 'https://accounts.spotify.com/authorize?' + q;
+}
+/* Retour de Spotify : https://table-mj.vercel.app/?code=…&state=… */
+async function spHandleReturn(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return;
+  let p = null; try{ p = JSON.parse(localStorage.getItem(SP_KEY + '-pkce') || 'null'); localStorage.removeItem(SP_KEY + '-pkce'); }catch(e){}
+  history.replaceState(null, '', '/#admin');
+  if(q.has('error')){ toast('Spotify connection cancelled.'); return; }
+  if(!p || p.state !== q.get('state')){ toast('Spotify connection expired. Click Connect again.'); return; }
+  const r = await fetch('https://accounts.spotify.com/api/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({grant_type:'authorization_code', code:q.get('code'), redirect_uri:SP_REDIRECT, client_id:p.clientId, code_verifier:p.verifier})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok){ toast('Spotify refused the connection: ' + (j.error_description || j.error || r.status)); return; }
+  sp.tok = {access:j.access_token, refresh:j.refresh_token, exp:Date.now() + (j.expires_in - 60) * 1000, clientId:p.clientId};
+  spStore(); toast('Spotify connected');
+}
+async function spRefresh(){
+  if(!sp.tok || !sp.tok.refresh) return false;
+  const r = await fetch('https://accounts.spotify.com/api/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({grant_type:'refresh_token', refresh_token:sp.tok.refresh, client_id:sp.tok.clientId})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok){ sp.tok = null; spStore(); return false; }
+  sp.tok.access = j.access_token; if(j.refresh_token) sp.tok.refresh = j.refresh_token;
+  sp.tok.exp = Date.now() + (j.expires_in - 60) * 1000; spStore(); return true;
+}
+async function spApi(path, opts = {}, retried){
+  if(!sp.tok) throw {status:401};
+  if(Date.now() > sp.tok.exp && !(await spRefresh())) throw {status:401};
+  const r = await fetch('https://api.spotify.com/v1' + path, Object.assign({}, opts, {
+    headers:Object.assign({Authorization:'Bearer ' + sp.tok.access}, opts.body ? {'Content-Type':'application/json'} : {})}));
+  if(r.status === 401 && !retried && await spRefresh()) return spApi(path, opts, true);
+  if(r.status === 204 || r.status === 202) return null;
+  const j = await r.json().catch(() => null);
+  if(!r.ok) throw {status:r.status, message:(j && j.error && (j.error.message || j.error)) || ''};
+  return j;
+}
+function spProblem(e){
+  if(e.status === 401){ sp.tok = null; spStore(); return 'Spotify session ended. Connect again.'; }
+  if(e.status === 403) return /premium/i.test(e.message || '') ? 'Spotify Premium is required to control playback.' : 'Spotify refused this action. Is your account in the app\'s user list?';
+  if(e.status === 404) return 'No active Spotify device. Open Spotify on your computer or phone, then try again.';
+  if(e.status === 429) return 'Spotify asked to slow down. Try again in a moment.';
+  return 'Spotify error' + (e.message ? ': ' + e.message : '.');
+}
+
+async function spLoadPlaylists(){
+  let url = '/me/playlists?limit=50', all = [];
+  for(let i = 0; i < 4 && url; i++){
+    const j = await spApi(url);
+    all = all.concat((j.items || []).filter(Boolean));
+    url = j.next ? j.next.replace('https://api.spotify.com/v1', '') : null;
+  }
+  sp.playlists = all.map(p => ({id:p.id, uri:p.uri, name:p.name, img:(p.images && p.images[0] && p.images[0].url) || '', mine:!!(p.owner && sp.me && p.owner.id === sp.me) || p.collaborative}));
+}
+async function spLoadTracks(pl){
+  if(sp.tracks[pl.id]) return sp.tracks[pl.id];
+  try{
+    let url = `/playlists/${pl.id}/items?limit=100`, all = [];
+    for(let i = 0; i < 5 && url; i++){
+      const j = await spApi(url);
+      all = all.concat((j.items || []).map(x => x.item || x.track).filter(t => t && t.uri && !t.is_local));
+      url = j.next ? j.next.replace('https://api.spotify.com/v1', '') : null;
+    }
+    sp.tracks[pl.id] = all.map(t => ({uri:t.uri, name:t.name, artist:(t.artists || t.show && [t.show] || []).map(a => a.name).join(', ')}));
+  }catch(e){
+    sp.tracks[pl.id] = (e.status === 403 || e.status === 404) ? 'locked' : 'error';
+  }
+  return sp.tracks[pl.id];
+}
+async function spPoll(){
+  if(!sp.tok || document.hidden) return;
+  try{
+    sp.player = await spApi('/me/player');
+    sp.err = '';
+  }catch(e){ sp.err = spProblem(e); }
+  renderMusicNow();
+}
+async function spDeviceId(){
+  if(sp.player && sp.player.device && sp.player.device.id) return sp.player.device.id;
+  const j = await spApi('/me/player/devices');
+  sp.devices = (j && j.devices) || [];
+  const d = sp.devices.find(x => x.is_active) || sp.devices.find(x => !x.is_restricted);
+  if(!d) throw {status:404};
+  return d.id;
+}
+async function spDo(fn){
+  if(sp.busy) return; sp.busy = true;
+  try{ await fn(); sp.err = ''; }
+  catch(e){ sp.err = spProblem(e); toast(sp.err); }
+  finally{ sp.busy = false; setTimeout(spPoll, 350); }
+}
+const spPlay = (body) => spDo(async () => {
+  const dev = await spDeviceId();
+  await spApi('/me/player/play?device_id=' + dev, {method:'PUT', body: body ? JSON.stringify(body) : undefined});
+});
+
+/* ---- Barre musique ---- */
 function renderMusic(){
-  const m = state.music, pl = PLAYLISTS[m.playlist], tr = pl.tracks[m.track];
-  const el = $('#music'); el.hidden=false;
+  spLoad();
+  const el = $('#music'); el.hidden = false;
+  const clientId = (state.spotifyClientId || '').trim();
+  if(!sp.tok){
+    el.className = 'music off';
+    el.innerHTML = `
+      <span class="sp-logo" aria-hidden="true">♫</span>
+      <div class="now"><div class="t">Music</div><div class="a">${clientId ? 'Control your Spotify playlists from here.' : 'Add your Spotify Client ID in ⚙ Settings to get started.'}</div></div>
+      <button class="btn primary" id="spConnect" ${clientId ? '' : 'disabled'}>Connect Spotify</button>`;
+    const b = $('#spConnect'); if(b) b.onclick = spLogin;
+    clearInterval(sp.timer); sp.timer = null;
+    return;
+  }
+  el.className = 'music';
   el.innerHTML = `
     <div class="ctl">
+      <button id="mShuf" class="sm" aria-label="Shuffle" title="Shuffle">⇄</button>
       <button id="mPrev" aria-label="Previous">⏮</button>
-      <button id="mPlay" class="play" aria-label="${m.playing?'Pause':'Play'}">${m.playing?'⏸':'▶'}</button>
+      <button id="mPlay" class="play" aria-label="Play">▶</button>
       <button id="mNext" aria-label="Next">⏭</button>
+      <button id="mRep" class="sm" aria-label="Repeat" title="Repeat">↻</button>
     </div>
-    <div class="now" style="width:210px"><div class="t">${esc(tr[0])}</div><div class="a">${esc(pl.name)} · ${esc(tr[1])}</div></div>
-    <div style="display:flex;gap:10px;align-items:center;min-width:0">
-      <select id="mPl" aria-label="Playlist">${PLAYLISTS.map((p,i)=>`<option value="${i}" ${i===m.playlist?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
-      <div class="tracks">${pl.tracks.map((t,i)=>`<button data-t="${i}" class="${i===m.track?'on':''}">${esc(t[0])}</button>`).join('')}</div>
+    <div class="now sp-now"><img id="mArt" alt="" hidden><div style="min-width:0"><div class="t" id="mTitle">—</div><div class="a" id="mSub"></div>
+      <div class="sp-bar"><div id="mProg"></div></div></div></div>
+    <div class="sp-pick">
+      <select id="mPl" aria-label="Playlist"><option value="">Loading playlists…</option></select>
+      <button class="btn" id="mList" aria-expanded="false">Tracks ▾</button>
+      <button class="btn" id="mPlPlay" title="Play this playlist from the start">Play playlist</button>
     </div>
-    <div class="vol"><span class="tag ex">Sample · Spotify not connected</span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="${m.volume}" aria-label="Volume"></div>`;
-  const set = (patch) => { Object.assign(state.music, patch); save(); renderMusic(); };
-  $('#mPlay').onclick = () => set({playing:!m.playing});
-  $('#mPrev').onclick = () => set({track:(m.track-1+pl.tracks.length)%pl.tracks.length, playing:true});
-  $('#mNext').onclick = () => set({track:(m.track+1)%pl.tracks.length, playing:true});
-  $('#mPl').onchange = e => set({playlist:+e.target.value, track:0});
-  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => set({track:+b.dataset.t, playing:true}));
-  $('#mVol').oninput = e => { state.music.volume = +e.target.value; save(); };
+    <div class="vol"><span id="mDev" class="tag"></span><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="50" aria-label="Volume">
+      <button class="btn sp-out" id="spOut" title="Disconnect Spotify">⏏</button></div>
+    <div class="sp-list" id="mPop" hidden></div>`;
+
+  $('#mPlay').onclick = () => spDo(async () => {
+    if(sp.player && sp.player.is_playing) await spApi('/me/player/pause', {method:'PUT'});
+    else { const dev = await spDeviceId(); await spApi('/me/player/play?device_id=' + dev, {method:'PUT'}); }
+  });
+  $('#mNext').onclick = () => spDo(() => spApi('/me/player/next', {method:'POST'}));
+  $('#mPrev').onclick = () => spDo(() => spApi('/me/player/previous', {method:'POST'}));
+  $('#mShuf').onclick = () => spDo(() => spApi('/me/player/shuffle?state=' + !(sp.player && sp.player.shuffle_state), {method:'PUT'}));
+  $('#mRep').onclick = () => spDo(() => spApi('/me/player/repeat?state=' + ((sp.player && sp.player.repeat_state !== 'off') ? 'off' : 'context'), {method:'PUT'}));
+  let volT = null;
+  $('#mVol').oninput = e => { clearTimeout(volT); const v = +e.target.value; volT = setTimeout(() => spDo(() => spApi('/me/player/volume?volume_percent=' + v, {method:'PUT'})), 250); };
+  $('#mPl').onchange = e => { state.music = Object.assign({}, state.music, {playlistId:e.target.value}); save(); sp.filter = ''; if(sp.listOpen) renderTrackList(); };
+  $('#mPlPlay').onclick = () => { const pl = curPlaylist(); if(pl) spPlay({context_uri:pl.uri}); };
+  $('#mList').onclick = e => { e.stopPropagation(); sp.listOpen = !sp.listOpen; $('#mList').setAttribute('aria-expanded', sp.listOpen); $('#mPop').hidden = !sp.listOpen; if(sp.listOpen) renderTrackList(); };
+  $('#spOut').onclick = () => { sp.tok = null; spStore(); renderMusic(); toast('Spotify disconnected'); };
+  if(!sp.docBound) sp.docBound = true, document.addEventListener('mousedown', e => { if(sp.listOpen && !e.target.closest('#mPop,#mList')){ sp.listOpen = false; const p = $('#mPop'); if(p) p.hidden = true; } });
+
+  (async () => {
+    try{
+      if(!sp.me){ const me = await spApi('/me'); sp.me = me && me.id; }
+      await spLoadPlaylists();
+      const sel = $('#mPl'); if(!sel) return;
+      sel.innerHTML = sp.playlists.length
+        ? sp.playlists.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
+        : '<option value="">No playlists found</option>';
+      const want = state.music && state.music.playlistId;
+      if(want && sp.playlists.some(p => p.id === want)) sel.value = want;
+      else if(sp.playlists[0]){ state.music = Object.assign({}, state.music, {playlistId:sp.playlists[0].id}); }
+    }catch(e){ toast(spProblem(e)); if(!sp.tok) renderMusic(); }
+  })();
+  spPoll();
+  clearInterval(sp.timer); sp.timer = setInterval(spPoll, 3000);
+}
+function curPlaylist(){ const id = $('#mPl') && $('#mPl').value; return sp.playlists.find(p => p.id === id); }
+async function renderTrackList(){
+  const pop = $('#mPop'), pl = curPlaylist(); if(!pop) return;
+  if(!pl){ pop.innerHTML = '<p class="bm-hint">Pick a playlist first.</p>'; return; }
+  pop.innerHTML = `<div class="sp-lh"><b>${esc(pl.name)}</b><input id="mFilter" placeholder="Filter tracks…" value="${esc(sp.filter)}"></div><div class="sp-items"><p class="bm-hint">Loading…</p></div>`;
+  const tr = await spLoadTracks(pl);
+  const box = pop.querySelector('.sp-items'); if(!box) return;
+  if(tr === 'locked'){
+    box.innerHTML = `<p class="bm-hint">Spotify only lists the tracks of playlists you created or collaborate on. Use <b>Play playlist</b>, then Next / Previous. Tip: save a copy of this playlist in Spotify (… > Add to other playlist > New playlist) to pick tracks here.</p>`;
+    pop.querySelector('#mFilter').hidden = true; return;
+  }
+  if(tr === 'error'){ box.innerHTML = '<p class="bm-hint">Could not load tracks. Try again.</p>'; return; }
+  const draw = () => {
+    const f = sp.filter.toLowerCase(), cur = sp.player && sp.player.item && sp.player.item.uri;
+    const rows = tr.map((t, i) => ({t, i})).filter(({t}) => !f || (t.name + ' ' + t.artist).toLowerCase().includes(f));
+    box.innerHTML = rows.length ? rows.map(({t, i}) => `<button class="sp-row ${t.uri === cur ? 'on' : ''}" data-i="${i}"><span class="n">${i + 1}</span><span class="tt">${esc(t.name)}</span><span class="ar">${esc(t.artist)}</span></button>`).join('') : '<p class="bm-hint">No match.</p>';
+    box.querySelectorAll('.sp-row').forEach(b => b.onclick = () => { spPlay({context_uri:pl.uri, offset:{uri:tr[+b.dataset.i].uri}}); });
+  };
+  pop.querySelector('#mFilter').oninput = e => { sp.filter = e.target.value; draw(); };
+  draw();
+}
+function fmtMs(ms){ const s = Math.floor((ms || 0) / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function renderMusicNow(){
+  if(!$('#mTitle')) return;
+  const p = sp.player, it = p && p.item;
+  $('#mPlay').textContent = p && p.is_playing ? '⏸' : '▶';
+  $('#mPlay').setAttribute('aria-label', p && p.is_playing ? 'Pause' : 'Play');
+  $('#mShuf').classList.toggle('on', !!(p && p.shuffle_state));
+  $('#mRep').classList.toggle('on', !!(p && p.repeat_state && p.repeat_state !== 'off'));
+  if(sp.err && !p){ $('#mTitle').textContent = 'Nothing playing'; $('#mSub').textContent = sp.err; }
+  else if(!p){ $('#mTitle').textContent = 'Nothing playing'; $('#mSub').textContent = 'Open Spotify on a device, then pick a track.'; }
+  else if(it){
+    $('#mTitle').textContent = it.name;
+    $('#mSub').textContent = ((it.artists || []).map(a => a.name).join(', ') || (it.show && it.show.name) || '') + ' · ' + fmtMs(p.progress_ms) + ' / ' + fmtMs(it.duration_ms);
+  }
+  const art = $('#mArt'), img = it && ((it.album && it.album.images) || it.images || []).slice(-1)[0];
+  if(img){ art.src = img.url; art.hidden = false; } else art.hidden = true;
+  $('#mProg').style.width = it ? Math.min(100, 100 * (p.progress_ms || 0) / (it.duration_ms || 1)) + '%' : '0';
+  const dev = p && p.device;
+  $('#mDev').textContent = dev ? '🔈 ' + dev.name : 'No device';
+  $('#mDev').className = 'tag ' + (dev ? 'ok' : 'err');
+  const vol = $('#mVol'); if(dev && typeof dev.volume_percent === 'number' && document.activeElement !== vol) vol.value = dev.volume_percent;
+  if(sp.listOpen && it){ $('#mPop').querySelectorAll('.sp-row').forEach(b => b.classList.toggle('on', b.querySelector('.tt').textContent === it.name)); }
 }
 
 /* ============ Rendu ============ */
@@ -1319,6 +1550,7 @@ function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ r
 async function boot(){
   if(!sb){ renderAll(); return; }                       // mode local
   if(isAdmin){
+    await spHandleReturn().catch(() => toast('Spotify connection failed. Try again.'));
     session = (await sb.auth.getSession()).data.session;
     if(!session){ showLogin(); return; }
     const { data, error } = await sb.from('etat').select('id,data');
