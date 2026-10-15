@@ -245,6 +245,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .tok-c img{width:100%;height:100%;object-fit:cover}
 .t-ennemi .tok-c{border-color:#e9a091}
 .t-pnj .tok-c{border-color:#ecd38f}
+.t-figurant .tok-c{border-color:#c9c2b4}
 .tok.me .tok-c{box-shadow:0 0 0 calc(3px * var(--inv,1)) var(--gold),0 2px 6px rgba(0,0,0,.6)}
 .tok.sel .tok-c{box-shadow:0 0 0 calc(4px * var(--inv,1)) var(--gold),0 2px 10px rgba(0,0,0,.6)}
 .tok.hid{opacity:.45}.tok.hid .tok-c{border-style:dashed}
@@ -480,7 +481,7 @@ const DEFAULT_CARTE = {
   ]
 };
 const PLAYER_COLORS = ['#5b8fd6','#c76fa8','#d69a4a','#4fa37a','#8a6fd1','#d0584a','#3fa3b5','#a8a24a'];
-const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC'};
+const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC', figurant:'Commoner'};
 
 const MAP_VIEWS = {};
 let currentMap = null;
@@ -712,7 +713,7 @@ function mountMap(host, key, opts){
           <span class="lib-c" style="--tc:${esc(t.couleur)}">${tokFace(t)}</span><span class="lib-n">${esc(t.nom)}</span></button>
           <button class="lib-ed" data-${edit}="${esc(t.id)}" aria-label="Edit ${esc(t.nom)}">✎</button></div>`;
     const players = state.joueurs || [];
-    const groups = [['ennemi','Enemies'], ['pnj','NPCs']].map(([k,l]) => {
+    const groups = [['ennemi','Enemies'], ['pnj','NPCs'], ['figurant','Commoners']].map(([k,l]) => {
       const items = LIB().filter(t => t.type === k);
       return items.length ? `<div class="lib-g"><div class="lib-gt">${l}</div><div class="lib-grid">${items.map(t => item(t,'place','edit')).join('')}</div></div>` : '';
     }).join('');
@@ -723,7 +724,7 @@ function mountMap(host, key, opts){
         <p class="bm-hint">This list is what players see on the “Who are you?” screen.</p>
         <div class="lib-grid">${players.map(t => item(t,'pplace','pedit')).join('') || '<p class="bm-hint">No players yet.</p>'}</div></div>
       ${groups}
-      <button class="btn primary" id="libNew">+ New enemy or NPC</button>`;
+      <button class="btn primary" id="libNew">+ New enemy, NPC or commoner</button>`;
     pLib.querySelector('.bm-x').onclick = () => toggleLib(false);
     pLib.querySelector('#libNew').onclick = () => editModel(null);
     pLib.querySelector('#plNew').onclick = () => editPlayer(null);
@@ -822,7 +823,7 @@ function mountMap(host, key, opts){
     const prev = () => { const el = pLib.querySelector('#mdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); };
     pLib.querySelector('.bm-x').onclick = renderLib;
     pLib.querySelector('#mdNom').oninput = e => { d.nom = e.target.value; prev(); };
-    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f'}[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
+    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
     pLib.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { d.taille = +b.dataset.sz; pLib.querySelectorAll('[data-sz]').forEach(x => x.classList.toggle('on', x===b)); });
     pLib.querySelector('#mdCol').oninput = e => { d.couleur = e.target.value; prev(); };
     pLib.querySelector('#mdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
@@ -861,7 +862,7 @@ function mountMap(host, key, opts){
     pTok.querySelector('.bm-x').onclick = () => select(null);
     pTok.querySelector('#tkNom').oninput = e => upd({nom:e.target.value});
     pTok.querySelector('#tkType').onchange = e => {
-      const type = e.target.value, col = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f'}[type];
+      const type = e.target.value, col = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[type];
       upd({type, couleur:col}); select(t.id);
     };
     pTok.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { upd({taille:+b.dataset.sz}); select(t.id); });
@@ -1038,6 +1039,7 @@ const DEFAULT = {
     {id:'m1', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1},
     {id:'m2', nom:'Wolf', type:'ennemi', couleur:'#6b6f78', img:'', taille:1},
     {id:'m3', nom:'Guard', type:'pnj', couleur:'#c9a13f', img:'', taille:1},
+    {id:'m6', nom:'Villager', type:'figurant', couleur:'#8a8578', img:'', taille:1},
     {id:'m4', nom:'Ogre', type:'ennemi', couleur:'#7a3a2c', img:'', taille:2}
   ],
   joueurs:[
