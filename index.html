@@ -109,9 +109,10 @@ img.av{object-fit:cover;background:var(--panel-2)}
 
 /* ---------- Admin ---------- */
 .console{grid-template-rows:auto minmax(0,1fr)}
-.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding:6px 12px 10px;max-height:240px;overflow-y:auto}
+.lib{display:flex;gap:8px;padding:6px 12px 10px;overflow-x:auto;overflow-y:hidden;height:136px;align-items:flex-start;scrollbar-width:thin;scroll-snap-type:x proximity}
+.lib > p{align-self:center}
 #libCats .cat-bar{padding:10px 12px 0}
-.sc-it{display:grid;gap:4px;align-content:start}
+.sc-it{display:grid;gap:4px;align-content:start;flex:0 0 124px;scroll-snap-align:start}
 .cat-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .cat-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);overflow:hidden}
 .cat-chip.on{border-color:var(--gold);background:var(--gold-soft)}
@@ -1507,11 +1508,17 @@ function renderLib(){
   if(ci){ ci.value = cur ? cur.name : ''; ci.disabled = !cur; }
   const bar = $('#libCats'); if(bar){ bar.innerHTML = catBarHTML('scene', state.images); }
   const shown = catFilter('scene', state.images);
+  const lib = $('#lib'), keepX = lib.scrollLeft;
+  if(!lib.dataset.wheel){   // molette verticale → défilement horizontal
+    lib.dataset.wheel = '1';
+    lib.addEventListener('wheel', e => { if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){ lib.scrollLeft += e.deltaY; e.preventDefault(); } }, {passive:false});
+  }
   $('#lib').innerHTML = shown.map(i => `
     <div class="sc-it"><button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Show to players" draggable="true" data-dragid="${i.id}">
       <img src="${esc(i.src)}" alt="" draggable="false"><span class="n">${esc(i.name)}</span>
       <span class="x" data-del="${i.id}" role="button" aria-label="Delete">✕</span></button>${catSelectHTML('scene', i)}</div>`).join('')
     || `<p style="color:var(--muted);margin:0">${state.images.length ? 'No image in this category yet. Upload one, or drag an image onto the category.' : 'Library is empty.'}</p>`;
+  lib.scrollLeft = keepX;
   catBind($('#libWrap'), 'scene', () => state.images, renderLib);
   $('#lib').querySelectorAll('.thumb').forEach(b => b.onclick = e => {
     const del = e.target.dataset.del;
