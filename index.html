@@ -52,7 +52,7 @@ button{cursor:pointer}
 .banner input.val:focus{outline:none;border-bottom-color:var(--gold)}
 
 /* ---------- Grille principale ---------- */
-.main{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:10px;min-height:0}
+.main{display:grid;grid-template-columns:minmax(0,1fr) var(--right-w, minmax(0,2fr));gap:10px;min-height:0}
 .col{display:grid;gap:10px;min-height:0}
 .col.right{grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
 
@@ -395,7 +395,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 @media (max-width:900px){
   body{overflow:auto}
   .app{height:auto}
-  .main{grid-template-columns:1fr}
+  .main{grid-template-columns:1fr!important}
   .col.left{min-height:60vh}
   .col.right{grid-template-rows:50vh 50vh}
   .banner{flex-wrap:wrap}
@@ -1893,7 +1893,19 @@ function applySkin(){
 }
 function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
 document.title = isAdmin ? 'DM Table · Admin' : 'DM Table';
-function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
+/* Colonne de droite à la largeur exacte d'une scène 16:9 ; la colonne de gauche prend tout le reste */
+function fitRightColumn(){
+  const main = document.querySelector('.main'), well = $('#scene') && $('#scene').parentElement;
+  if(!main || !well) return;
+  if(matchMedia('(max-width:900px)').matches){ main.style.removeProperty('--right-w'); return; }
+  const h = well.clientHeight; if(!h) return;
+  const pane = well.closest('.pane'), border = pane.offsetWidth - pane.clientWidth;
+  const w = Math.min(Math.round(h * 16 / 9) + border, Math.round(main.clientWidth * 0.6));
+  if(main.style.getPropertyValue('--right-w') !== w + 'px') main.style.setProperty('--right-w', w + 'px');
+}
+new ResizeObserver(() => fitRightColumn()).observe(document.querySelector('.main'));
+addEventListener('resize', fitRightColumn);
+function renderAll(){ renderShared(); renderLeft(); renderFeed(); fitRightColumn(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
 
 async function boot(){
   if(!sb){ renderAll(); return; }                       // mode local
