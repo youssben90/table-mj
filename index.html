@@ -61,6 +61,9 @@ button{cursor:pointer}
 .pane-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none}
 .pane-h h2{margin:0;font:700 12px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .pane-h .sp{flex:1}
+.pane-h h2,.pane-h .btn{white-space:nowrap;flex:none}
+.pane-h .seg{flex:none}
+.pane-h .tag{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pane-b{flex:1;min-height:0;position:relative}
 .tag{font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:4px;background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
 .tag.ex{color:var(--gold);border-color:rgba(214,162,74,.4)}
@@ -348,6 +351,38 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .modal-card .btn{padding:9px;text-align:center}
 .modal-card input{width:100%}
 .pres-row .pres-sheet{padding:2px 8px;font-size:12px}
+.dice-layer{position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;transition:opacity .5s}
+.dice-layer.on{opacity:1}
+.dice-box{position:absolute;inset:0}
+.dice-box canvas{display:block}
+.dice-cap{position:absolute;top:14px;left:50%;transform:translateX(-50%);max-width:min(90vw,640px);display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--gold);color:var(--text);font-weight:600;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dice-cap[hidden]{display:none}
+.dice-cap i{width:10px;height:10px;border-radius:50%;flex:none}
+.msg.rolling .txt{color:var(--muted);font-style:italic}
+.dsw{display:inline-grid;place-items:center;width:30px;height:30px;flex:none;border-radius:7px;background:var(--dbg);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.35);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.dsw b{font:700 11px var(--f-body);color:var(--dfg);text-shadow:0 0 2px rgba(0,0,0,.6)}
+.dice-card{width:min(600px,100%);max-height:calc(100vh - 32px);overflow-y:auto;text-align:left}
+.dice-card h2,.dice-card>p{text-align:center}
+.dice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.dpick{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);cursor:pointer;font:500 12px var(--f-body)}
+.dpick:hover{border-color:var(--muted)}
+.dpick.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.dpick span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.dice-custom{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.dice-custom label,.dice-dn,.dice-local label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.dice-custom[hidden]{display:none}
+.dice-card input[type=checkbox]{width:auto;margin:0}
+.dice-card input[type=color]{width:46px;height:30px;padding:2px}
+.dice-custom select{width:auto}
+.dice-dn input{flex:1}
+.dice-local{display:flex;flex-wrap:wrap;gap:6px 18px}
+.dice-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.dice-btns .btn{padding:8px 14px}
+.dice-rows{display:grid;gap:6px}
+.dice-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;background:var(--panel-2)}
+.dr-nm{flex:1;min-width:0;display:grid}
+.dr-nm small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dice-row .btn{padding:5px 12px}
 .btn.who{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:15px;text-align:left}
 .btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
 
@@ -463,6 +498,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
   <footer class="music" id="music" hidden></footer>
 </div>
 <div class="toast" id="toast"></div>
+<div class="dice-layer" id="diceLayer" aria-hidden="true"><div class="dice-cap" id="diceCap" hidden></div></div>
 <div class="modal" id="modal" hidden></div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
@@ -479,7 +515,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <script src="config.js"></script>
 <script>
 /* ============ État partagé ============ */
-const SITE_VERSION = '1.9';   // à augmenter à chaque mise à jour
+const SITE_VERSION = '2.0';   // à augmenter à chaque mise à jour
 const KEY = 'table-mj-state-v1';
 const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
 
@@ -1240,6 +1276,7 @@ const DEFAULT = {
   music:{playlistId:''},
   spotifyClientId:'',
   ddbCampaign:'',
+  deDM:{set:'bloodmoon'},
   cartesBiblio:[],
   imageCats:[],
   mapCats:[],
@@ -1276,7 +1313,7 @@ const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
     }) : null;
 // anciennes versions : la connexion MJ était mémorisée durablement, on l'efface
 try{ Object.keys(localStorage).filter(k => /^sb-.*-auth-token$/.test(k)).forEach(k => localStorage.removeItem(k)); }catch(e){}
-const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
+const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs','deDM']; // visibles par les joueurs
 const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats','ddbCampaign'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
@@ -1414,7 +1451,9 @@ function renderFeed(){
   if(!sb){ feedTag('Sample · offline', 'ex'); renderSampleFeed(); return; }
   if(!feedTimer){
     pollFeed();
-    feedTimer = setInterval(() => { if(!document.hidden) pollFeed(); }, 4000);
+    // toutes les secondes ; toutes les 4 s quand le salon est calme depuis 15 min (économise le quota Vercel)
+    let tick = 0;
+    feedTimer = setInterval(() => { tick++; if(!document.hidden && (Date.now() - feedLastNew < 900000 || tick % 4 === 0)) pollFeed(); }, 1000);
   }
 }
 async function pollFeed(){
@@ -1441,15 +1480,25 @@ async function pollFeed(){
     }
     feedTag('Live', 'ok');
     if(data.channel && !(state.discord && state.discord.label)) $('#chanTitle').textContent = '#' + data.channel;
-    const sig = JSON.stringify(data.messages);
-    if(sig === feedSig) return;
-    feedSig = sig;
-    const f = $('#feed'), atBottom = f.scrollHeight - f.scrollTop - f.clientHeight < 60;
-    f.innerHTML = data.messages.length ? data.messages.map(renderMsg).join('') : '<div class="empty"><div><b>No messages yet</b>Messages posted in the channel will appear here.</div></div>';
-    if(atBottom || !f.dataset.init){ f.scrollTop = f.scrollHeight; f.dataset.init = '1'; }
+    feedMsgs = data.messages || [];
+    diceScan(feedMsgs);
+    drawFeed();
   }catch(e){
     feedTag('Offline', 'err');
   }finally{ feedBusy = false; }
+}
+let feedMsgs = [], feedLastNew = Date.now();
+function drawFeed(){
+  const sig = JSON.stringify(feedMsgs) + [...diceHold].join();
+  if(sig === feedSig) return;
+  feedSig = sig;
+  const f = $('#feed'), atBottom = f.scrollHeight - f.scrollTop - f.clientHeight < 60;
+  f.innerHTML = feedMsgs.length ? feedMsgs.map(m => diceHold.has(m.id) ? renderRolling(m) : renderMsg(m)).join('') : '<div class="empty"><div><b>No messages yet</b>Messages posted in the channel will appear here.</div></div>';
+  if(atBottom || !f.dataset.init){ f.scrollTop = f.scrollHeight; f.dataset.init = '1'; }
+}
+function renderRolling(m){   // résultat caché tant que les dés roulent
+  return `<div class="msg rolling"><img class="av" src="${esc(m.avatar)}" alt="" onerror="this.style.visibility='hidden'"><div style="min-width:0">
+    <div class="who">${esc(m.author)}${m.bot ? '<span class="bot">BOT</span>' : ''}</div><div class="txt">🎲 Rolling…</div></div></div>`;
 }
 /* Mise en forme Discord (gras, italique, code, mentions, émojis, liens) */
 function md(text, mentions){
@@ -1487,17 +1536,331 @@ function renderMsg(m){
   </div></div>`;
 }
 
+/* ============ Dés 3D : mise en scène des jets d'Avrae ============ */
+// Avrae fait le vrai jet ; le site relit le message et fait rouler des dés 3D qui s'arrêtent sur les mêmes valeurs.
+const DICE_CDN = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box-threejs@0.0.12/';
+const DICE_SETS = [   // [clé, nom affiché, couleur des chiffres, couleurs du dé]
+  ['bloodmoon','Blood Moon','#CDB800',['#6F0000']], ['fire','Fire','#f8d84f',['#f9b02d','#f43c04','#910200']],
+  ['ice','Ice','#60E9FF',['#3c6ac1','#0b56e2','#09317a']], ['poison','Poison','#D6A8FF',['#504099','#934fc3','#c949fc']],
+  ['acid','Acid','#A9FF70',['#a6ff00','#5ace04','#83b625']], ['thunder','Thunder','#FFC500',['#7D7D7D']],
+  ['lightning','Lightning','#FFC500',['#f17105','#f3ca40','#df9a57']], ['air','Air','#ffffff',['#c3dee5','#a4ccd6','#80a4ad']],
+  ['water','Water','#60E9FF',['#87b8c4','#6b98a3','#4b757f']], ['earth','Earth','#6C9943',['#346804','#3a1d04','#5a352a']],
+  ['force','Force','#ffffff',['#FF97FF','#FF68FF','#C651C6']], ['psychic','Psychic','#D6A8FF',['#313866','#66409E','#C949FC']],
+  ['necrotic','Necrotic','#ffffff',['#6F0000']], ['radiant','Radiant','#F9B333',['#FFFFFF']],
+  ['starynight','Starry Night','#4F708F',['#091636','#233660','#8597AD']], ['astralsea','Astral Sea','#565656',['#ffffff']],
+  ['glitterparty','Glitter Party','#ffffff',['#FFB5F5','#7FC9FF','#A17FFF']], ['pinkdreams','Pink Dreams','#ffffff',['#ff007c','#df73ff','#f400a1']],
+  ['breebaby','Pastel Sunset','#5E175E',['#FE89CF','#C2C2E8','#A1D9FC']], ['inspired','Inspired','#FFD800',['#C4C4B6']],
+  ['bronze','Bronze','#FFB066',['#705206','#7A4E06','#643100']], ['dragons','Dragon Scales','#FFFFFF',['#B80000','#4D5A5A','#7E934E']],
+  ['birdup','Feathers','#FFFFFF',['#F11602','#FFC000','#0094BC']], ['tigerking','Big Cats','#ffffff',['#FFCC40']],
+  ['rainbow','Rainbow','#FF5959',['#900000','#BCBC00','#00008E']], ['black','Black','#ffffff',['#000000']], ['white','White','#000000',['#FFFFFF']]
+];
+const DICE_FINISH = [['none','Smooth'],['marble','Marble'],['cloudy','Clouds'],['speckles','Speckles'],['glitter','Glitter'],['stars','Stars'],['paper','Paper'],['wood','Wood'],['metal','Metal'],['fire','Flames'],['ice','Frost'],['water','Water'],['skulls','Skulls'],['dragon','Dragon'],['stainedglass','Stained glass']];
+const diceSet = k => DICE_SETS.find(s => s[0] === k);
+function diceStyleOk(s){ return s && (s.set ? !!diceSet(s.set) : /^#[0-9a-f]{6}$/i.test(s.bg || '')); }
+function playerDice(r){ return r && diceStyleOk(r.de) ? r.de : {bg: (r && r.couleur) || '#888888', fg:'#ffffff', tex:'none'}; }
+function dmDice(){ return diceStyleOk(state.deDM) ? state.deDM : {set:'bloodmoon'}; }
+function diceSwatch(s){
+  const p = s.set && diceSet(s.set);
+  const bg = p ? p[3] : [s.bg], fg = p ? p[2] : (s.fg || '#ffffff');
+  const grad = bg.length > 1 ? `linear-gradient(135deg,${bg.join(',')})` : bg[0];
+  return `<span class="dsw" style="--dbg:${esc(grad)};--dfg:${esc(fg)}"><b>20</b></span>`;
+}
+function diceLabel(s){ const p = s.set && diceSet(s.set); return p ? p[1] : 'Custom'; }
+function diceOpts(){ let o = {}; try{ o = JSON.parse(localStorage.getItem('table-mj-dice') || '{}'); }catch(e){} return {show: o.show !== false, sound: o.sound !== false}; }
+function setDiceOpts(p){ const o = Object.assign(diceOpts(), p); try{ localStorage.setItem('table-mj-dice', JSON.stringify(o)); }catch(e){} diceReset(); }
+
+/* --- lecture des messages d'Avrae (format de la bibliothèque d20 : « 1d20 (**15**) + 5 = `20` », dés écartés barrés) --- */
+function diceInLine(line){
+  let clean = '', mask = [], drop = false;
+  for(let i = 0; i < line.length;){
+    if(line.startsWith('~~', i)){ drop = !drop; i += 2; continue; }
+    if(line.startsWith('**', i)){ i += 2; continue; }
+    if(line[i] === '`'){ i++; continue; }
+    clean += line[i]; mask.push(drop); i++;
+  }
+  const out = [], re = /(\d+)d(\d+)[^\s(]*\s\(([^()]*)\)/g;
+  let m;
+  while((m = re.exec(clean))){
+    const size = +m[2];
+    let pos = m.index + m[0].lastIndexOf('(' + m[3]) + 1;
+    m[3].split(',').forEach(tok => {
+      const lead = tok.length - tok.trimStart().length, nums = tok.match(/\d+/g);
+      if(nums) out.push({size, value: +nums[nums.length - 1], dropped: !!mask[pos + lead]});
+      pos += tok.length + 1;
+    });
+  }
+  return out;
+}
+function rollSources(m){
+  const src = [];
+  if(m.content) src.push(m.content);
+  (m.embeds || []).forEach(e => { if(e.description) src.push(e.description); (e.fields || []).forEach(f => src.push(f.value || '')); });
+  return src;
+}
+function diceKey(m){ const e = (m.embeds || [])[0]; return e && e.title ? e.title.trim().toLowerCase() : ''; }
+let dmgMemo = {};
+try{ dmgMemo = JSON.parse(localStorage.getItem('table-mj-dmg') || '{}'); }catch(e){}
+function learnDamage(m){   // retient les dés de dégâts d'une attaque réussie, pour les montrer sans chiffre en cas d'échec
+  const key = diceKey(m); if(!key || !m.bot) return;
+  rollSources(m).forEach(txt => {
+    const lines = txt.split('\n');
+    if(!lines.some(l => /\*\*To Hit/.test(l))) return;
+    lines.forEach(l => {
+      const d = /^\s*\*\*Damage( \(CRIT!\))?\*\*/.exec(l); if(!d) return;
+      const sizes = diceInLine(l).filter(x => !x.dropped).map(x => x.size);
+      if(!sizes.length) return;
+      if(d[1]){ if(sizes.length % 2) return; sizes.sort((a, b) => a - b); dmgMemo[key] = dmgMemo[key] || sizes.filter((_, i) => i % 2 === 0); }
+      else dmgMemo[key] = sizes;
+    });
+  });
+  try{ localStorage.setItem('table-mj-dmg', JSON.stringify(dmgMemo)); }catch(e){}
+}
+function rollerOf(m){
+  const roster = state.joueurs || [], e = (m.embeds || [])[0], title = (e && e.title || '').toLowerCase();
+  let best = null;
+  roster.forEach(r => { const n = (r.nom || '').toLowerCase(); if(n && title.startsWith(n) && (!best || n.length > best.nom.length)) best = r; });
+  if(!best && title){ const w = title.split(/\s/)[0]; best = roster.find(r => (r.nom || '').split(/\s/)[0].toLowerCase() === w) || null; }
+  if(!best){
+    const names = (m.mentions || []).map(u => (u.name || '').toLowerCase());
+    best = roster.find(r => names.includes((r.discord || '').toLowerCase()) || names.includes((r.nom || '').toLowerCase())) || null;
+  }
+  return best;
+}
+const DICE_SIZES = [4, 6, 8, 10, 12, 20, 100];
+function dicePlan(m){
+  if(!m.bot) return null;
+  const main = [], blank = [];
+  rollSources(m).forEach(txt => {
+    let hit = false, dmg = false, miss = false;
+    txt.split('\n').forEach(l => {
+      if(/\*\*To Hit/.test(l)) hit = true;
+      if(/^\s*\*\*(Damage|Healing)/.test(l)) dmg = true;
+      if(/\*\*Miss!\*\*/.test(l)) miss = true;
+      diceInLine(l).forEach(d => { if(DICE_SIZES.includes(d.size)) main.push(d); });
+    });
+    if(hit && miss && !dmg) (dmgMemo[diceKey(m)] || []).forEach(size => blank.push({size}));
+  });
+  if(!main.length) return null;
+  const r = rollerOf(m), style = r ? playerDice(r) : dmDice();
+  const e = (m.embeds || [])[0];
+  return {title: e && e.title ? e.title : (r ? r.nom + ' rolls' : 'Roll'), color: r ? r.couleur : '', style, main: main.slice(0, 30), blank: blank.slice(0, 12)};
+}
+
+/* --- moteur 3D (chargé seulement au premier jet) --- */
+let diceLibP = null, diceBoxes = [], diceFadeT = null;
+function diceLib(){
+  return diceLibP || (diceLibP = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = DICE_CDN + 'dist/dice-box-threejs.umd.js';
+    s.onload = () => window['dice-box-threejs'] ? res(window['dice-box-threejs']) : rej(new Error('no lib'));
+    s.onerror = () => { diceLibP = null; rej(new Error('Dice library unavailable')); };
+    document.head.appendChild(s);
+  }));
+}
+async function diceBox(i){
+  if(diceBoxes[i]) return diceBoxes[i];
+  const DB = await diceLib();
+  const host = document.createElement('div'); host.className = 'dice-box'; host.id = 'diceBox' + i;
+  $('#diceLayer').appendChild(host);
+  const box = new DB('#diceBox' + i, {assetPath: DICE_CDN + 'public/', sounds: diceOpts().sound, volume: 60, theme_colorset: 'white', strength: 1.3, shadows: true});
+  if(i === 1) box.DiceFactory.setBumpMapping(false);   // boîte des dés « sans chiffre »
+  await box.initialize();
+  box._host = host; box._style = '';
+  return (diceBoxes[i] = box);
+}
+function diceReset(){   // libère les dés (taille d'écran ou option changée)
+  diceBoxes.forEach(b => { try{ b.renderer.dispose(); b.renderer.forceContextLoss(); }catch(e){} b._host.remove(); });
+  diceBoxes = [];
+}
+let diceRT = null;
+addEventListener('resize', () => { clearTimeout(diceRT); diceRT = setTimeout(() => { if(!diceBusy) diceReset(); }, 300); });
+function diceTheme(s, blank){
+  if(blank){
+    const p = s.set && diceSet(s.set), c = p ? p[3][0] : (s.bg || '#777777');
+    return {theme_customColorset: {name: 'blank' + c, background: c, foreground: 'rgba(0,0,0,0)', outline: 'none', texture: 'none', material: 'plastic'}};
+  }
+  if(s.set) return {theme_colorset: s.set};
+  return {theme_customColorset: {name: 'c' + s.bg + (s.fg || '') + (s.tex || ''), background: s.bg, foreground: s.fg || '#ffffff', outline: 'black', texture: s.tex || 'none', material: s.tex === 'wood' ? 'wood' : s.tex === 'metal' ? 'metal' : 'glass'}};
+}
+async function diceThrow(i, style, dice, blank){
+  const box = await diceBox(i), key = JSON.stringify(style) + (blank ? 'b' : '');
+  if(box._style !== key){ await box.updateConfig(diceTheme(style, blank)); box._style = key; }
+  // un d100 = un dé des dizaines + un d10 ; les dés sont regroupés par type (ordre imposé par la bibliothèque)
+  const parts = [];
+  dice.forEach((d, k) => {
+    if(d.size === 100){
+      const v = d.value;
+      if(v === undefined){ parts.push({t:100, k}, {t:10, k}); return; }
+      parts.push({t:100, v: (Math.floor((v % 100) / 10) * 10) || 100, k}, {t:10, v: (v % 10) || 10, k});
+    } else parts.push({t:d.size, v:d.value, k});
+  });
+  parts.sort((a, b) => a.t - b.t);
+  const counts = {};
+  parts.forEach(p => counts[p.t] = (counts[p.t] || 0) + 1);
+  const notation = Object.keys(counts).sort((a, b) => a - b).map(t => counts[t] + 'd' + t).join('+') + (blank ? '' : '@' + parts.map(p => p.v).join(','));
+  await box.roll(notation);
+  parts.forEach((p, idx) => {   // dés écartés (avantage, relance) : estompés
+    if(!dice[p.k].dropped) return;
+    const mesh = box.diceList[idx]; if(!mesh) return;
+    (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(mt => { mt.transparent = true; mt.opacity = 0.25; mt.needsUpdate = true; });
+  });
+  box.renderer.render(box.scene, box.camera);
+}
+async function diceAnimate(plan){
+  clearTimeout(diceFadeT);
+  const L = $('#diceLayer');
+  L.classList.add('on');
+  const cap = $('#diceCap');
+  cap.innerHTML = `${plan.color ? `<i style="background:${esc(plan.color)}"></i>` : ''}${esc(plan.title)}`;
+  cap.hidden = false;
+  const jobs = [diceThrow(0, plan.style, plan.main, false)];
+  if(plan.blank && plan.blank.length) jobs.push(diceThrow(1, plan.style, plan.blank, true));
+  else if(diceBoxes[1]){ diceBoxes[1].clearDice(); diceBoxes[1].renderer.render(diceBoxes[1].scene, diceBoxes[1].camera); }
+  await Promise.all(jobs);
+}
+function diceFade(){
+  clearTimeout(diceFadeT);
+  diceFadeT = setTimeout(() => {
+    $('#diceLayer').classList.remove('on'); $('#diceCap').hidden = true;
+    setTimeout(() => { if(diceBusy) return; diceBoxes.forEach(b => { try{ b.clearDice(); b.renderer.render(b.scene, b.camera); }catch(e){} }); }, 600);
+  }, 2600);
+}
+let diceBusy = false, diceQueue = [], diceCur = null;
+async function diceRun(){
+  if(diceBusy || !diceQueue.length) return;
+  while(diceQueue.length > 3) diceQueue.shift().done();   // trop de jets en attente : on révèle les plus anciens
+  const job = diceCur = diceQueue.shift();
+  diceBusy = true;
+  try{
+    await Promise.race([diceAnimate(job.plan), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))]);
+  }catch(e){ console.warn('Dice:', e.message); }
+  job.done(); diceCur = null;
+  if(diceQueue.length) setTimeout(() => { diceBusy = false; diceRun(); }, 1200);
+  else { diceBusy = false; diceFade(); }
+}
+function diceRoll(plan, done){
+  let fired = false;
+  diceQueue.push({plan, done: () => { if(!fired){ fired = true; done && done(); } }});   // révélé une seule fois
+  diceRun();
+}
+document.addEventListener('visibilitychange', () => {   // onglet masqué : on révèle tout de suite les résultats retenus
+  if(!document.hidden) return;
+  diceQueue.forEach(j => j.done()); diceQueue = [];
+  if(diceCur) diceCur.done();
+});
+
+/* --- messages retenus dans le fil pendant que les dés roulent --- */
+let feedSeen = null, diceHold = new Set();
+function diceScan(msgs){
+  if(!feedSeen){
+    feedSeen = new Set(msgs.map(m => m.id)); msgs.forEach(learnDamage);
+    if(diceOpts().show) setTimeout(() => diceBox(0).catch(() => {}), 1500);   // prépare les dés à l'avance
+    return;
+  }
+  msgs.forEach(m => {
+    if(feedSeen.has(m.id)) return;
+    feedSeen.add(m.id); feedLastNew = Date.now();
+    const plan = dicePlan(m);
+    learnDamage(m);
+    if(!plan || !diceOpts().show || document.hidden || Date.now() - new Date(m.at) > 90000) return;
+    diceHold.add(m.id);
+    diceRoll(plan, () => { diceHold.delete(m.id); drawFeed(); });
+  });
+}
+
+/* --- choix des dés : « My dice » (joueur) et « Manage dice » (DM) --- */
+function openDicePicker(o){
+  const m = $('#modal');
+  let st = Object.assign({}, o.style);
+  const custom = () => st.set ? {bg: diceSet(st.set)[3][0], fg: diceSet(st.set)[2], tex: 'none'} : st;
+  m.hidden = false;
+  const draw = () => {
+    const c = custom();
+    m.innerHTML = `<div class="modal-card dice-card" role="dialog" aria-labelledby="dpT">
+      <h2 id="dpT">${esc(o.title)}</h2>
+      ${o.hint ? `<p>${esc(o.hint)}</p>` : ''}
+      <div class="dice-grid" role="group" aria-label="Dice style">
+        ${DICE_SETS.map(s => `<button class="dpick ${st.set === s[0] ? 'on' : ''}" data-set="${s[0]}" title="${esc(s[1])}">${diceSwatch({set:s[0]})}<span>${esc(s[1])}</span></button>`).join('')}
+        <button class="dpick ${st.set ? '' : 'on'}" data-set="" title="Custom">${diceSwatch(Object.assign({}, c))}<span>Custom</span></button>
+      </div>
+      <div class="dice-custom" ${st.set ? 'hidden' : ''}>
+        <label>Dice <input type="color" id="dpBg" value="${esc(c.bg)}"></label>
+        <label>Numbers <input type="color" id="dpFg" value="${esc(c.fg || '#ffffff')}"></label>
+        <label>Finish <select id="dpTex">${DICE_FINISH.map(f => `<option value="${f[0]}" ${(c.tex || 'none') === f[0] ? 'selected' : ''}>${f[1]}</option>`).join('')}</select></label>
+      </div>
+      ${o.discord !== undefined ? `<label class="dice-dn">Discord name <input id="dpDn" value="${esc(o.discord)}" placeholder="Your name on Discord (for !r rolls)" autocomplete="off"></label>` : ''}
+      ${o.local ? `<div class="dice-local"><label><input type="checkbox" id="dpShow" ${diceOpts().show ? 'checked' : ''}> Show dice on my screen</label><label><input type="checkbox" id="dpSound" ${diceOpts().sound ? 'checked' : ''}> Dice sounds</label></div>` : ''}
+      <div class="dice-btns"><button class="btn" id="dpTest">🎲 Test roll</button><button class="btn primary" id="dpSave">Save</button><button class="btn" id="dpClose">${o.back ? 'Back' : 'Close'}</button></div>
+    </div>`;
+    m.querySelectorAll('.dpick').forEach(b => b.onclick = () => { st = b.dataset.set ? {set: b.dataset.set} : Object.assign({}, custom()); draw(); });
+    const upd = () => { st = {bg: $('#dpBg').value, fg: $('#dpFg').value, tex: $('#dpTex').value}; m.querySelector('.dpick:last-child').innerHTML = diceSwatch(st) + '<span>Custom</span>'; };
+    if(!st.set){ $('#dpBg').oninput = upd; $('#dpFg').oninput = upd; $('#dpTex').onchange = upd; }
+    const sh = $('#dpShow'); if(sh) sh.onchange = e => setDiceOpts({show: e.target.checked});
+    const so = $('#dpSound'); if(so) so.onchange = e => setDiceOpts({sound: e.target.checked});
+    $('#dpTest').onclick = () => {
+      const rnd = n => 1 + Math.floor(Math.random() * n);
+      diceRoll({title: 'Test roll', color: o.color || '', style: st, main: [{size:20, value:rnd(20)}, {size:8, value:rnd(8)}, {size:6, value:rnd(6)}]});
+    };
+    $('#dpSave').onclick = async () => {
+      const dn = $('#dpDn') ? $('#dpDn').value.trim().slice(0, 40) : undefined;
+      if(await o.onSave(st, dn) === false) return;
+      toast('Dice saved'); o.back ? o.back() : (m.hidden = true);
+    };
+    $('#dpClose').onclick = () => o.back ? o.back() : (m.hidden = true);
+  };
+  draw();
+  m.onclick = e => { if(e.target === m) m.hidden = true; };
+}
+function openMyDice(){
+  const r = myPlayer(); if(!r) return;
+  openDicePicker({title: 'My dice', hint: 'Pick how your dice look when Avrae rolls for ' + r.nom + '. Everyone at the table sees them.', style: playerDice(r), discord: r.discord || '', color: r.couleur, local: true,
+    onSave: async (de, discord) => {
+      if(sb){
+        const { data, error } = await sb.rpc('mes_des', {code: playerCode, joueur: me, de, discord: discord || ''});
+        if(error || data === false){ toast('Not saved. Try again or ask your DM.'); return false; }
+      } else save();
+      r.de = de; r.discord = discord || '';
+      playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:{nom: r.nom, de, discord: r.discord}});
+    }});
+}
+function openManageDice(){
+  const m = $('#modal'), roster = state.joueurs || [];
+  m.hidden = false;
+  m.innerHTML = `<div class="modal-card dice-card" role="dialog" aria-labelledby="mdT">
+    <h2 id="mdT">Manage dice</h2>
+    <p>Dice roll on everyone's screen when Avrae posts a roll. Players can also pick their own with “My dice”.</p>
+    <div class="dice-rows">
+      ${roster.map((r, i) => `<div class="dice-row">${diceSwatch(playerDice(r))}<span class="dr-nm"><b>${esc(r.nom)}</b><small>${esc(diceStyleOk(r.de) ? diceLabel(r.de) : 'Token color')}${r.discord ? ' · @' + esc(r.discord) : ''}</small></span><button class="btn" data-dr="${i}">Change</button></div>`).join('')}
+      <div class="dice-row">${diceSwatch(dmDice())}<span class="dr-nm"><b>DM &amp; monsters</b><small>${esc(diceLabel(dmDice()))}</small></span><button class="btn" data-dr="dm">Change</button></div>
+    </div>
+    <div class="dice-local"><label><input type="checkbox" id="mdShow" ${diceOpts().show ? 'checked' : ''}> Show dice on my screen</label><label><input type="checkbox" id="mdSound" ${diceOpts().sound ? 'checked' : ''}> Dice sounds</label></div>
+    <button class="btn" id="mdClose">Close</button>
+  </div>`;
+  $('#mdShow').onchange = e => setDiceOpts({show: e.target.checked});
+  $('#mdSound').onchange = e => setDiceOpts({sound: e.target.checked});
+  $('#mdClose').onclick = () => { m.hidden = true; };
+  m.onclick = e => { if(e.target === m) m.hidden = true; };
+  m.querySelectorAll('[data-dr]').forEach(b => b.onclick = () => {
+    if(b.dataset.dr === 'dm') return openDicePicker({title: 'DM & monster dice', hint: 'Used for your rolls and for monsters.', style: dmDice(), back: openManageDice,
+      onSave: de => { state.deDM = de; save(); }});
+    const r = roster[+b.dataset.dr];
+    openDicePicker({title: r.nom + "'s dice", style: playerDice(r), discord: r.discord || '', color: r.couleur, back: openManageDice,
+      onSave: (de, discord) => { r.de = de; r.discord = discord || ''; save(); }});
+  });
+}
+
 /* ============ Colonne gauche ============ */
 function renderLeft(){
   const left = $('#left');
   if(!isAdmin){
     left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
-      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button><button class="btn" id="mySheet">My sheet</button><button class="btn" id="mySheetEd" title="Change my sheet link" aria-label="Change my sheet link">✎</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
+      ${sb ? `<span class="tag" title="${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}">${me && me!=='-' ? esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button><button class="btn" id="myDice">My dice</button><button class="btn" id="mySheet">My sheet</button><button class="btn" id="mySheetEd" title="Change my sheet link" aria-label="Change my sheet link">✎</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
       <div class="seg" role="group" aria-label="Theme"><button data-myskin="nuit">Night</button><button data-myskin="parchemin">Parchment</button></div></div>
       <div class="pane-b" id="mapHost"></div></div>`;
     const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
     const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
     const ms = $('#mySheet'); if(ms) ms.onclick = () => openMySheet();
+    const md = $('#myDice'); if(md) md.onclick = () => openMyDice();
     const me2 = $('#mySheetEd'); if(me2) me2.onclick = () => askMySheet();
     const markSkin = () => { const cur = document.documentElement.dataset.skin; document.querySelectorAll('[data-myskin]').forEach(b => b.classList.toggle('on', b.dataset.myskin === cur)); };
     document.querySelectorAll('[data-myskin]').forEach(b => b.onclick = () => {
@@ -1563,6 +1926,7 @@ function renderLeft(){
     </div>
     <div class="pane">
       <div class="pane-h"><h2>Map & notes</h2><span class="sp"></span>
+        <button class="btn" id="diceBtn">Manage dice</button>
         <div class="seg" role="group" aria-label="Layout">
           <button data-split="map" class="${state.split==='map'?'on':''}">Map</button>
           <button data-split="both" class="${state.split==='both'?'on':''}">Both</button>
@@ -1619,6 +1983,7 @@ function renderLeft(){
     sp.tok = null; spStore(); renderMusic();
     toast(v ? 'Spotify Client ID saved' : 'Spotify Client ID removed');
   };
+  $('#diceBtn').onclick = () => openManageDice();
   $('#ddbBtn').onclick = () => {
     if(!state.ddbCampaign){ if(!settingsOpen) toggleSettings(true); setTimeout(() => { const i = $('#ddbUrl'); i && i.focus(); }, 0); toast('Paste your D&D Beyond campaign link in Settings first'); return; }
     openViewer(state.ddbCampaign);
@@ -2299,6 +2664,8 @@ function mergeFromDb(d){
     const mine = rosterOf(r.nom);
     if(mine && (mine.couleur !== r.couleur || (mine.img || '') !== (r.img || ''))){ mine.couleur = r.couleur; mine.img = r.img || ''; changed = true; }
     if(mine && (mine.ddb || '') !== (r.ddb || '')){ mine.ddb = r.ddb || ''; renderPresence(); }
+    if(mine && r.de && JSON.stringify(mine.de || null) !== JSON.stringify(r.de)) mine.de = r.de;
+    if(mine && (mine.discord || '') !== (r.discord || '')) mine.discord = r.discord || '';
   });
   if(changed && currentMap) currentMap.refresh();
 }
@@ -2307,6 +2674,8 @@ function applyJoueur(p){
   if(p.couleur) r.couleur = p.couleur;
   if(p.img !== undefined) r.img = p.img;
   if(p.ddb !== undefined){ r.ddb = p.ddb; if(isAdmin) renderPresence(); }
+  if(p.de !== undefined) r.de = p.de;
+  if(p.discord !== undefined) r.discord = p.discord;
   currentMap && currentMap.refresh();
 }
 function chooseIdentity(data){
