@@ -56,7 +56,8 @@ button{cursor:pointer}
 .col{display:grid;gap:10px;min-height:0}
 .col.right{grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
 
-.pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.col > *, .pane > *, #libWrap{min-width:0}
 .pane-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none}
 .pane-h h2{margin:0;font:700 12px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .pane-h .sp{flex:1}
