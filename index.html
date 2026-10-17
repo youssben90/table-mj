@@ -349,15 +349,16 @@ img.av{object-fit:cover;background:var(--panel-2)}
 [data-skin="parchemin"] .pane,
 [data-skin="parchemin"] .banner,
 [data-skin="parchemin"] .music{
-  isolation:isolate;background:transparent;border-color:transparent;box-shadow:none;
+  isolation:isolate;background:transparent;border-color:transparent;box-shadow:none;overflow:visible;
 }
+[data-skin="parchemin"] .pane-b{overflow:hidden;border-radius:0 0 calc(var(--r) - 2px) calc(var(--r) - 2px)}
 [data-skin="parchemin"] .banner,
 [data-skin="parchemin"] .music{position:relative}
 [data-skin="parchemin"] .pane{position:relative}
 [data-skin="parchemin"] .pane::before,
 [data-skin="parchemin"] .banner::before,
 [data-skin="parchemin"] .music::before{
-  content:"";position:absolute;inset:3px;z-index:-2;pointer-events:none;border-radius:var(--r);will-change:transform;
+  content:"";position:absolute;inset:-4px;z-index:-2;pointer-events:none;border-radius:var(--r);will-change:transform;
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='4' seed='3'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .3  0 0 0 0 .12  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
     radial-gradient(ellipse at 50% 45%, #f6ebd0 35%, #ead7ad 75%, #d6bb85 100%);
@@ -367,7 +368,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 [data-skin="parchemin"] .pane::after,
 [data-skin="parchemin"] .banner::after,
 [data-skin="parchemin"] .music::after{
-  content:"";position:absolute;inset:6px;z-index:-1;pointer-events:none;border-radius:var(--r);will-change:transform;
+  content:"";position:absolute;inset:-1px;z-index:-1;pointer-events:none;border-radius:var(--r);will-change:transform;
   border:1.5px solid rgba(110,72,30,.55);
   filter:url(#parch-ink);
 }
@@ -381,6 +382,8 @@ img.av{object-fit:cover;background:var(--panel-2)}
 [data-skin="parchemin"] .btn{background:#ead9b3;border-color:var(--line)}
 [data-skin="parchemin"] .btn.primary{background:var(--gold);border-color:#6d1f14}
 [data-skin="parchemin"] .scene .cap{color:#f3e6c8}
+[data-skin="parchemin"] .scene .empty,[data-skin="parchemin"] .bm .empty{color:#c9b892}
+[data-skin="parchemin"] .scene .empty b,[data-skin="parchemin"] .bm .empty b{color:#f3e6c8}
 [data-skin="parchemin"] .embed{background:rgba(255,248,230,.55)}
 [data-skin="parchemin"] .av{color:#2c1d0e}
 [data-skin="parchemin"] .thumb .n{color:#f3e6c8}
@@ -406,11 +409,11 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <filter id="parch-edge" x="-3%" y="-3%" width="106%" height="106%">
     <feTurbulence type="fractalNoise" baseFrequency="0.035 0.05" numOctaves="4" seed="11" result="t"/>
-    <feDisplacementMap in="SourceGraphic" in2="t" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="6" xChannelSelector="R" yChannelSelector="G"/>
   </filter>
   <filter id="parch-ink" x="-2%" y="-2%" width="104%" height="104%">
     <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="4" result="t"/>
-    <feDisplacementMap in="SourceGraphic" in2="t" scale="3"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="2.5"/>
   </filter>
 </svg>
 <div class="app" id="app">
@@ -443,7 +446,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
     <h1>DM Table</h1>
-    <p>Game Master sign-in only.</p>
+    <p>Dungeon Master sign-in only.</p>
     <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required>
     <label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" required>
     <button class="btn primary" type="submit">Sign in</button>
@@ -1195,7 +1198,7 @@ function renderScene(){
   const img = state.images.find(i => i.id===state.current);
   $('#scene').innerHTML = img
     ? `<img src="${esc(img.src)}" alt="${esc(img.name)}"><div class="cap">${esc(img.name)}</div>`
-    : `<div class="empty"><div><b>No image</b>The GM hasn't shown anything yet.</div></div>`;
+    : `<div class="empty"><div><b>No image</b>The DM hasn't shown anything yet.</div></div>`;
   $('#sceneTag').hidden = !isAdmin;
 }
 
@@ -1248,16 +1251,16 @@ async function pollFeed(){
     } else url += '?code=' + encodeURIComponent(playerCode);
     const r = await fetch(url, {headers});
     if(r.status === 404 && !(r.headers.get('content-type') || '').includes('json')){
-      feedTag('Not set up', ''); feedEmpty('Discord bot not set up yet', isAdmin ? 'Add the bot file to the site to show your channel here.' : 'Your GM is still setting this up.'); return;
+      feedTag('Not set up', ''); feedEmpty('Discord bot not set up yet', isAdmin ? 'Add the bot file to the site to show your channel here.' : 'Your DM is still setting this up.'); return;
     }
     const data = await r.json().catch(() => ({}));
     if(data.error){
       feedTag(data.error === 'rate_limited' ? 'Live · slowing down' : 'Not connected', data.error === 'rate_limited' ? '' : 'err');
-      if(data.error !== 'rate_limited') feedEmpty('Discord unavailable', isAdmin ? data.message : 'Your GM needs to check the Discord settings.');
+      if(data.error !== 'rate_limited') feedEmpty('Discord unavailable', isAdmin ? data.message : 'Your DM needs to check the Discord settings.');
       return;
     }
     if(!data.channel && !(data.messages || []).length && !(state.discord && state.discord.channel)){
-      feedTag('No channel', ''); feedEmpty('No channel chosen', isAdmin ? 'Paste a channel link in ⚙ Settings.' : 'Your GM hasn\'t picked a channel yet.'); return;
+      feedTag('No channel', ''); feedEmpty('No channel chosen', isAdmin ? 'Paste a channel link in ⚙ Settings.' : 'Your DM hasn\'t picked a channel yet.'); return;
     }
     feedTag('Live', 'ok');
     if(data.channel && !(state.discord && state.discord.label)) $('#chanTitle').textContent = '#' + data.channel;
@@ -1330,7 +1333,7 @@ function renderLeft(){
         sendJeton(t.id, t.x, t.y, true);
         if(sb) sb.rpc('deplacer_jeton', {code:playerCode, joueur:me, jeton:t.id, x:t.x, y:t.y})
           .then(({data, error}) => {
-            if(error) toast('Move not saved: ' + (/function|schema cache/i.test(error.message || '') ? 'the server is missing the token-move setup. Tell your GM.' : (error.message || 'server error.')));
+            if(error) toast('Move not saved: ' + (/function|schema cache/i.test(error.message || '') ? 'the server is missing the token-move setup. Tell your DM.' : (error.message || 'server error.')));
             else if(data === false) toast("Move not saved: this isn't your token.");
           });
         else save();
@@ -1989,7 +1992,7 @@ function openMyToken(first){
     Object.assign(r, patch); refresh(); currentMap && currentMap.refresh();
     if(sb){
       const { data, error } = await sb.rpc('mon_jeton', {code:playerCode, joueur:me, couleur:r.couleur, img: patch.img === undefined ? null : patch.img});
-      if(error || data === false){ Object.assign(r, prev); refresh(); currentMap && currentMap.refresh(); toast('Not saved. Try again or ask your GM.'); return; }
+      if(error || data === false){ Object.assign(r, prev); refresh(); currentMap && currentMap.refresh(); toast('Not saved. Try again or ask your DM.'); return; }
     } else save();
     playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:Object.assign({nom:r.nom, couleur:r.couleur}, patch.img === undefined ? {} : {img:r.img})});
     toast('Token updated');
@@ -2034,7 +2037,7 @@ function chooseIdentity(data){
     <h1>Who are you?</h1>
     <p>Pick your character so you can move their token on the map.</p>
     <div class="who-list">${pjs.map(t => `<button type="button" class="btn who" data-n="${esc(t.nom)}"><span class="dot" style="background:${esc(t.couleur)}"></span>${esc(t.nom)}</button>`).join('')}
-      ${pjs.length ? '' : '<p class="bm-hint">Your GM hasn\'t added any player characters yet.</p>'}
+      ${pjs.length ? '' : '<p class="bm-hint">Your DM hasn\'t added any player characters yet.</p>'}
       <button type="button" class="btn who" data-n="-">Just watch</button></div>`;
   $('#loginForm').querySelectorAll('.who').forEach(b => b.onclick = () => {
     try{ sessionStorage.setItem('table-mj-joueur', b.dataset.n); }catch(e){}
@@ -2045,7 +2048,7 @@ function askCode(wrong){
   $('#login').hidden = false; $('#app').style.visibility = 'hidden';
   $('#loginForm').innerHTML = `
     <h1>DM Table</h1>
-    <p>Enter the code your Game Master gave you.</p>
+    <p>Enter the code your Dungeon Master gave you.</p>
     <label for="cdIn">Access code</label><input id="cdIn" autocomplete="off" required autofocus>
     <button class="btn primary" type="submit">Join the table</button>
     <p class="login-err" id="lgErr" ${wrong?'':'hidden'}>Wrong or expired code.</p>`;
