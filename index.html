@@ -1091,7 +1091,12 @@ let bc = null; try{ bc = new BroadcastChannel('table-mj'); }catch(e){}
 /* ---- Synchronisation : Supabase si configuré, sinon entre onglets du même navigateur ---- */
 const CFG = window.TABLE_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
-  ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
+  ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {
+      // connexion MJ valable pour cet onglet seulement : fermer l'onglet = déconnexion (F5 garde la session)
+      auth:{storage:window.sessionStorage, persistSession:true, autoRefreshToken:true}
+    }) : null;
+// anciennes versions : la connexion MJ était mémorisée durablement, on l'efface
+try{ Object.keys(localStorage).filter(k => /^sb-.*-auth-token$/.test(k)).forEach(k => localStorage.removeItem(k)); }catch(e){}
 const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
 const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
