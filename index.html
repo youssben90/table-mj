@@ -347,15 +347,6 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .modal-card p{margin:0;color:var(--muted);font-size:14px}
 .modal-card .btn{padding:9px;text-align:center}
 .modal-card input{width:100%}
-.viewer{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.6)}
-.viewer[hidden]{display:none}
-.viewer-win{width:94vw;height:90vh;display:grid;grid-template-rows:auto 1fr auto;background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.viewer-bar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line, rgba(127,127,127,.3))}
-.viewer-bar b{color:var(--gold);white-space:nowrap}
-.viewer-url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
-.viewer-win iframe{width:100%;height:100%;border:0;background:#fff}
-.viewer-foot{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;padding:6px 10px;color:var(--muted);font-size:12px}
-.viewer-mode{display:flex;align-items:center;gap:6px;cursor:pointer}
 .pres-row .pres-sheet{padding:2px 8px;font-size:12px}
 .btn.who{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:15px;text-align:left}
 .btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
@@ -473,20 +464,6 @@ img.av{object-fit:cover;background:var(--panel-2)}
 </div>
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal" hidden></div>
-<div class="viewer" id="viewer" hidden>
-  <div class="viewer-win" role="dialog" aria-labelledby="vwT">
-    <div class="viewer-bar">
-      <b id="vwT"></b><span class="viewer-url" id="vwUrl"></span>
-      <button class="btn" id="vwChange" hidden>Change link</button>
-      <button class="btn" id="vwRefresh" title="Refresh">⟳ Refresh</button>
-      <button class="btn" id="vwPop" title="Open in a separate window">⧉ Pop-out</button>
-      <button class="btn" id="vwClose" title="Close (Esc)">✕ Close</button>
-    </div>
-    <iframe id="vwFrame" title="D&amp;D Beyond" allow="clipboard-write; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    <div class="viewer-foot"><span>Blank or “refused to connect”? D&amp;D Beyond doesn't allow being shown inside other sites: use ⧉ Pop-out.</span>
-      <label class="viewer-mode"><input type="checkbox" id="vwMode"> Always open in a separate window</label></div>
-  </div>
-</div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
     <h1>DM Table</h1>
@@ -502,7 +479,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <script src="config.js"></script>
 <script>
 /* ============ État partagé ============ */
-const SITE_VERSION = '1.8';   // à augmenter à chaque mise à jour
+const SITE_VERSION = '1.9';   // à augmenter à chaque mise à jour
 const KEY = 'table-mj-state-v1';
 const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
 
@@ -987,7 +964,7 @@ function mountMap(host, key, opts){
     pLib.querySelector('#pdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
     pLib.querySelector('#pdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
     pLib.querySelector('#pdDdb').onchange = e => { d.ddb = e.target.value.trim(); };
-    const ddbO = pLib.querySelector('#pdDdbOpen'); if(ddbO) ddbO.onclick = () => openViewer(r.ddb, r.nom + ' · character sheet');
+    const ddbO = pLib.querySelector('#pdDdbOpen'); if(ddbO) ddbO.onclick = () => openViewer(r.ddb);
     pLib.querySelector('#pdNoImg').onclick = () => { d.img = ''; pLib.querySelector('#pdImg').value = ''; prev(); };
     pLib.querySelector('#pdSave').onclick = () => {
       d.nom = d.nom.trim();
@@ -1515,12 +1492,13 @@ function renderLeft(){
   const left = $('#left');
   if(!isAdmin){
     left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
-      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button><button class="btn" id="mySheet">My sheet</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
+      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button><button class="btn" id="mySheet">My sheet</button><button class="btn" id="mySheetEd" title="Change my sheet link" aria-label="Change my sheet link">✎</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
       <div class="seg" role="group" aria-label="Theme"><button data-myskin="nuit">Night</button><button data-myskin="parchemin">Parchment</button></div></div>
       <div class="pane-b" id="mapHost"></div></div>`;
     const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
     const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
     const ms = $('#mySheet'); if(ms) ms.onclick = () => openMySheet();
+    const me2 = $('#mySheetEd'); if(me2) me2.onclick = () => askMySheet();
     const markSkin = () => { const cur = document.documentElement.dataset.skin; document.querySelectorAll('[data-myskin]').forEach(b => b.classList.toggle('on', b.dataset.myskin === cur)); };
     document.querySelectorAll('[data-myskin]').forEach(b => b.onclick = () => {
       try{ localStorage.setItem('table-mj-theme', b.dataset.myskin); }catch(e){}
@@ -1643,7 +1621,7 @@ function renderLeft(){
   };
   $('#ddbBtn').onclick = () => {
     if(!state.ddbCampaign){ if(!settingsOpen) toggleSettings(true); setTimeout(() => { const i = $('#ddbUrl'); i && i.focus(); }, 0); toast('Paste your D&D Beyond campaign link in Settings first'); return; }
-    openViewer(state.ddbCampaign, 'D&D Beyond campaign');
+    openViewer(state.ddbCampaign);
   };
   $('#ddbUrl').onchange = e => {
     const v = e.target.value.trim();
@@ -2092,7 +2070,7 @@ function renderPresence(){
     <button class="btn" id="presEdit">Manage players</button>`;
   pop.querySelectorAll('[data-sheet]').forEach(b => b.onclick = () => {
     const r = rosterOf(b.dataset.sheet); if(!r || !r.ddb) return;
-    togglePresence(false); openViewer(r.ddb, r.nom + ' · character sheet');
+    togglePresence(false); openViewer(r.ddb);
   });
   $('#presEdit').onclick = () => {
     togglePresence(false);
@@ -2248,42 +2226,20 @@ function openMyToken(first){
     catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
   };
 }
-/* D&D Beyond : fenêtre "navigateur" au-dessus du site */
+/* D&D Beyond : liens de campagne et de fiches */
 function ddbOk(u){ return /^https:\/\/([a-z0-9-]+\.)*(dndbeyond\.com|ddb\.ac)(\/\S*)?$/i.test(u || '') && u.length <= 500; }
-function ddbPopMode(){ try{ return localStorage.getItem('table-mj-ddb-mode') === 'pop'; }catch(e){ return false; } }
-function popOut(url){
+/* D&D Beyond refuse d'être affiché dans un autre site : on ouvre une vraie fenêtre séparée */
+function openViewer(url){
+  if(!url) return;
   const w = Math.min(1280, screen.availWidth - 40), h = Math.min(960, screen.availHeight - 60);
-  const win = window.open(url, 'dm-table-ddb', `popup,width=${w},height=${h},left=${Math.max(0,(screen.availWidth - w) / 2)},top=${Math.max(0,(screen.availHeight - h) / 2)}`);
+  const name = 'ddb_' + url.replace(/\W/g, '').slice(-40);   // une fenêtre par fiche / campagne
+  const win = window.open(url, name, `popup,width=${w},height=${h},left=${Math.max(0,(screen.availWidth - w) / 2)},top=${Math.max(0,(screen.availHeight - h) / 2)}`);
   if(win) win.focus(); else toast('Your browser blocked the window: allow pop-ups for this site.');
 }
-let viewerUrl = '';
-function openViewer(url, title, onChange){
-  if(!url) return;
-  if(ddbPopMode()){ popOut(url); return; }
-  viewerUrl = url;
-  const v = $('#viewer');
-  $('#vwT').textContent = title || 'D&D Beyond';
-  $('#vwUrl').textContent = url;
-  const ch = $('#vwChange'); ch.hidden = !onChange; ch.onclick = () => { closeViewer(); onChange(); };
-  $('#vwMode').checked = false;
-  $('#vwFrame').src = url;
-  v.hidden = false;
-}
-function closeViewer(){ const v = $('#viewer'); if(v.hidden) return; v.hidden = true; $('#vwFrame').src = 'about:blank'; }
-$('#vwClose').onclick = closeViewer;
-$('#vwRefresh').onclick = () => { const f = $('#vwFrame'); f.src = 'about:blank'; setTimeout(() => { f.src = viewerUrl; }, 30); };
-$('#vwPop').onclick = () => { const u = viewerUrl; closeViewer(); popOut(u); };
-$('#vwMode').onchange = e => {
-  try{ localStorage.setItem('table-mj-ddb-mode', e.target.checked ? 'pop' : 'frame'); }catch(err){}
-  if(e.target.checked){ const u = viewerUrl; closeViewer(); popOut(u); toast('D&D Beyond will now open in a separate window'); }
-};
-$('#viewer').onclick = e => { if(e.target.id === 'viewer') closeViewer(); };
-document.addEventListener('keydown', e => { if(e.key === 'Escape') closeViewer(); });
 /* Joueur : sa fiche de personnage */
 function openMySheet(){
   const r = myPlayer(); if(!r) return;
-  if(r.ddb) openViewer(r.ddb, r.nom + ' · character sheet', askMySheet);
-  else askMySheet();
+  if(r.ddb) openViewer(r.ddb); else askMySheet();
 }
 function askMySheet(){
   const r = myPlayer(); if(!r) return;
@@ -2300,14 +2256,14 @@ function askMySheet(){
   const inp = $('#msUrl'); inp.focus();
   async function commit(v){
     if(v && !ddbOk(v)) return toast('That is not a D&D Beyond link (https://www.dndbeyond.com/…)');
+    if(v) openViewer(v);   // ouvert tout de suite, sinon le navigateur bloque la fenêtre
     if(sb){
       const { data, error } = await sb.rpc('ma_fiche', {code:playerCode, joueur:me, lien:v});
       if(error || data === false){ toast('Not saved. Try again or ask your DM.'); return; }
     } else save();
     r.ddb = v; m.hidden = true;
     playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:{nom:r.nom, ddb:v}});
-    if(v){ toast('Sheet saved'); openViewer(v, r.nom + ' · character sheet', askMySheet); }
-    else toast('Sheet link removed');
+    toast(v ? 'Sheet saved' : 'Sheet link removed');
   }
   $('#msSave').onclick = () => commit(inp.value.trim());
   inp.onkeydown = e => { if(e.key === 'Enter') commit(inp.value.trim()); };
