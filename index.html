@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GM Table</title>
+<title>DM Table</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;500;600;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -442,7 +442,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <div class="modal" id="modal" hidden></div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
-    <h1>GM Table</h1>
+    <h1>DM Table</h1>
     <p>Game Master sign-in only.</p>
     <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required>
     <label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" required>
@@ -1827,7 +1827,7 @@ function renderChannel(){
 }
 function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
 function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
-document.title = isAdmin ? 'GM Table · Admin' : 'GM Table';
+document.title = isAdmin ? 'DM Table · Admin' : 'DM Table';
 function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
 
 async function boot(){
@@ -1981,7 +1981,7 @@ function chooseIdentity(data){
 function askCode(wrong){
   $('#login').hidden = false; $('#app').style.visibility = 'hidden';
   $('#loginForm').innerHTML = `
-    <h1>GM Table</h1>
+    <h1>DM Table</h1>
     <p>Enter the code your Game Master gave you.</p>
     <label for="cdIn">Access code</label><input id="cdIn" autocomplete="off" required autofocus>
     <button class="btn primary" type="submit">Join the table</button>
