@@ -274,6 +274,25 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bm-del{color:var(--danger);margin-top:4px}
 .bm-panel output{color:var(--text);font-variant-numeric:tabular-nums}
 .who-list{display:grid;gap:8px}
+.bm-areas{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.bm-areas .z-s{stroke-width:calc(2px * var(--inv,1))}
+.bm-areas .draft .z-s{stroke-dasharray:calc(8px * var(--inv,1)) calc(5px * var(--inv,1))}
+.bm-areas .z-hid .z-s{stroke-dasharray:calc(3px * var(--inv,1)) calc(4px * var(--inv,1))}
+.bm-areas .z-hid{opacity:.7}
+.bm-areas .z-o{r:calc(4px * var(--inv,1))}
+.bm-areas .z-t{font:600 calc(12px * var(--inv,1)) var(--f-body);paint-order:stroke;stroke:rgba(0,0,0,.7);stroke-width:calc(3px * var(--inv,1));transform:translate(calc(8px * var(--inv,1)), calc(-8px * var(--inv,1)))}
+.bm[data-tool="area"]{cursor:crosshair}
+.bm-panel.bm-area{width:min(250px,calc(100% - 70px))}
+.ar-shapes{justify-self:stretch;display:grid!important;grid-template-columns:repeat(4,1fr)}
+.ar-shapes button{padding:5px 2px}
+.ar-ft{align-self:center;color:var(--muted)}
+.ar-list{display:grid;gap:6px}
+.ar-it{display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:start;font-size:12px}
+.ar-dot{width:10px;height:10px;border-radius:50%;margin-top:3px}
+.bm-measure b{font-weight:700}
+.tok.ctl .tok-c{box-shadow:0 0 0 calc(3px * var(--inv,1)) var(--oc),0 2px 6px rgba(0,0,0,.6)}
+.tok.ctl.sel .tok-c{box-shadow:0 0 0 calc(3px * var(--inv,1)) var(--oc),0 0 0 calc(6px * var(--inv,1)) var(--gold)}
+.t-compagnon .tok-c{border-color:#9fe0d2}
 .pres-n{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:999px;font:600 11px/1.4 var(--f-mono);background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
 .pres-n.on{background:rgba(111,191,138,.15);color:var(--ok);border-color:rgba(111,191,138,.45)}
 .pop.pres-pop{width:min(320px,calc(100% - 24px));padding:12px;display:grid;gap:10px}
@@ -486,6 +505,7 @@ const SAMPLE_IMAGES = [
 const ICONS = {
   move:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>',
   ruler: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1.5" transform="rotate(-30 12 12)"/><path d="M7.5 9.6l1.2 2M10.6 7.8l1.7 2.9M13.7 6l1.2 2"/></svg>',
+  area:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="10" r="6"/><path d="M13 21l8-8-5 0z" fill="currentColor" fill-opacity=".25"/></svg>',
   fit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   add:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>',
   map:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>'
@@ -504,6 +524,7 @@ function sampleMap(){
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 const DEFAULT_CARTE = {
+  zones: [],
   src: sampleMap(), path: null, w: 1400, h: 980,
   cell: 70, offX: 0, offY: 0, grid: true,
   jetons: [
@@ -515,7 +536,8 @@ const DEFAULT_CARTE = {
   ]
 };
 const PLAYER_COLORS = ['#5b8fd6','#c76fa8','#d69a4a','#4fa37a','#8a6fd1','#d0584a','#3fa3b5','#a8a24a'];
-const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC', figurant:'Commoner'};
+const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC', figurant:'Commoner', compagnon:'Companion'};
+const TYPE_COLOR = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578', compagnon:'#3f9a8a'};
 
 const MAP_VIEWS = {};
 let currentMap = null;
@@ -536,10 +558,11 @@ function mountMap(host, key, opts){
   const editable = !!opts.editable;
   host.innerHTML = `
     <div class="bm" data-tool="move">
-      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><svg class="bm-grid" xmlns="http://www.w3.org/2000/svg"><defs><pattern patternUnits="userSpaceOnUse"><path fill="none"/></pattern></defs><rect width="100%" height="100%"/></svg><div class="bm-tokens"></div><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><svg class="bm-grid" xmlns="http://www.w3.org/2000/svg"><defs><pattern patternUnits="userSpaceOnUse"><path fill="none"/></pattern></defs><rect width="100%" height="100%"/></svg><div class="bm-tokens"></div><svg class="bm-areas" xmlns="http://www.w3.org/2000/svg"></svg><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
       <div class="bm-tools" role="toolbar" aria-label="Map tools">
         <button data-tool="move" class="on" title="Move (map and tokens)" aria-label="Move">${ICONS.move}</button>
         <button data-tool="ruler" title="Ruler: drag to measure" aria-label="Ruler">${ICONS.ruler}</button>
+        <button data-tool="area" title="Spell areas: circle, cone, line, square" aria-label="Spell areas">${ICONS.area}</button>
         <button data-act="fit" title="Fit map to screen" aria-label="Fit to screen">${ICONS.fit}</button>
         ${editable ? `<span class="bm-sep"></span>
         <button data-act="add" title="Token library" aria-label="Token library">${ICONS.add}</button>
@@ -549,12 +572,13 @@ function mountMap(host, key, opts){
       <div class="bm-panel" data-panel="cfg" hidden></div>
       <div class="bm-panel" data-panel="tok" hidden></div>
       <div class="bm-panel bm-lib" data-panel="lib" hidden></div>
+      <div class="bm-panel bm-area" data-panel="area" hidden></div>
     </div>`;
   const root = host.querySelector('.bm'), world = root.querySelector('.bm-world'),
         img = root.querySelector('.bm-img'), grid = root.querySelector('.bm-grid'),
         layer = root.querySelector('.bm-tokens'), ruler = root.querySelector('.bm-ruler'),
         measure = root.querySelector('.bm-measure'),
-        pCfg = root.querySelector('[data-panel=cfg]'), pTok = root.querySelector('[data-panel=tok]'), pLib = root.querySelector('[data-panel=lib]');
+        pCfg = root.querySelector('[data-panel=cfg]'), pTok = root.querySelector('[data-panel=tok]'), pLib = root.querySelector('[data-panel=lib]'), pArea = root.querySelector('[data-panel=area]'), areas = root.querySelector('.bm-areas');
   let view = MAP_VIEWS[key] || null, tool = 'move', dragging = null, selected = null, loadedSrc = null;
   const C = () => state.carte;
 
@@ -573,7 +597,8 @@ function mountMap(host, key, opts){
   }
   function toWorld(cx, cy){ const r = root.getBoundingClientRect(); return {x:(cx - r.left - view.x)/view.s, y:(cy - r.top - view.y)/view.s}; }
 
-  function canMove(t){ return editable || (t.type === 'pj' && t.nom === opts.me); }
+  function ctrlOptions(cur){ return '<option value="">Nobody (DM only)</option>' + (state.joueurs || []).map(r => `<option value="${esc(r.nom)}" ${cur === r.nom ? 'selected' : ''}>${esc(r.nom)}</option>`).join(''); }
+  function canMove(t){ return editable || (t.type === 'pj' && t.nom === opts.me) || (!!t.ctrl && t.ctrl === opts.me); }
 
   const GRID_COLORS = {black:'rgba(0,0,0,.6)', grey:'rgba(205,205,205,.7)', white:'rgba(246,239,222,.8)'};
   function styleGrid(){
@@ -608,7 +633,8 @@ function mountMap(host, key, opts){
       const size = c.cell * (t.taille || 1);
       const f = faceOf(t);
       el.style.cssText = `left:${t.x}px;top:${t.y}px;width:${size}px;height:${size}px;--tc:${f.couleur || '#888'}`;
-      el.className = `tok t-${t.type}${t.visible === false ? ' hid' : ''}${canMove(t) ? ' mov' : ''}${selected === t.id ? ' sel' : ''}${t.type==='pj' && t.nom===opts.me ? ' me' : ''}`;
+      el.className = `tok t-${t.type}${t.visible === false ? ' hid' : ''}${canMove(t) ? ' mov' : ''}${selected === t.id ? ' sel' : ''}${t.type==='pj' && t.nom===opts.me ? ' me' : ''}${t.ctrl ? ' ctl' : ''}`;
+      if(t.ctrl){ const o = rosterOf(t.ctrl); el.style.setProperty('--oc', o ? o.couleur : '#888'); el.title = t.nom + ' · controlled by ' + t.ctrl; } else el.removeAttribute('title');
       el.innerHTML = `<div class="tok-c">${f.img ? `<img src="${esc(f.img)}" alt="" draggable="false">` : `<span>${esc(initials(t.nom))}</span>`}</div><div class="tok-n">${esc(t.nom)}</div>`;
     });
   }
@@ -624,12 +650,130 @@ function mountMap(host, key, opts){
       };
       img.src = c.src;
     }
-    renderGrid(); renderTokens();
+    renderGrid(); renderTokens(); renderAreas();
     if(!view) requestAnimationFrame(fit); else apply();
   }
 
+
+  /* ---- Gabarits de zone (sorts) ----
+     Zone = {id, shape:'circle'|'cone'|'line'|'square', x, y (origine, en pixels de carte), a (angle), r (taille en ft), owner, hidden}
+     Une case est touchée si son centre est dans la zone. */
+  const AREA = {shape:'circle', size:0, pin:false, hidden:false, draft:null};
+  const SHAPES = [['circle','Circle'],['cone','Cone'],['line','Line'],['square','Square']];
+  const ftToPx = ft => ft / 5 * C().cell;
+  function zonePoly(z){
+    const L = ftToPx(z.r), ca = Math.cos(z.a), sa = Math.sin(z.a), px = -sa, py = ca;
+    if(z.shape === 'cone') return [[z.x, z.y], [z.x + L*ca + L/2*px, z.y + L*sa + L/2*py], [z.x + L*ca - L/2*px, z.y + L*sa - L/2*py]];
+    if(z.shape === 'line'){ const W = C().cell / 2;
+      return [[z.x + W*px, z.y + W*py], [z.x + L*ca + W*px, z.y + L*sa + W*py], [z.x + L*ca - W*px, z.y + L*sa - W*py], [z.x - W*px, z.y - W*py]]; }
+    if(z.shape === 'square'){ const sx = ca >= 0 ? 1 : -1, sy = sa >= 0 ? 1 : -1;
+      return [[z.x, z.y], [z.x + sx*L, z.y], [z.x + sx*L, z.y + sy*L], [z.x, z.y + sy*L]]; }
+    return null;
+  }
+  function inZone(z, x, y, poly){
+    if(z.shape === 'circle') return Math.hypot(x - z.x, y - z.y) <= ftToPx(z.r) + 0.01;
+    let ins = false;
+    for(let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if(((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) ins = !ins;
+    }
+    return ins;
+  }
+  function zoneCells(z){
+    const c = C(), poly = zonePoly(z), L = ftToPx(z.r) + c.cell;
+    const out = [], i0 = Math.floor((z.x - L - c.offX) / c.cell), i1 = Math.ceil((z.x + L - c.offX) / c.cell),
+          j0 = Math.floor((z.y - L - c.offY) / c.cell), j1 = Math.ceil((z.y + L - c.offY) / c.cell);
+    for(let i = i0; i <= i1; i++) for(let j = j0; j <= j1; j++){
+      const cx = c.offX + (i + .5) * c.cell, cy = c.offY + (j + .5) * c.cell;
+      if(inZone(z, cx, cy, poly)) out.push([c.offX + i * c.cell, c.offY + j * c.cell]);
+    }
+    return out;
+  }
+  function zoneTargets(z){
+    const c = C(), poly = zonePoly(z);
+    return c.jetons.filter(t => (editable || t.visible !== false)).filter(t => {
+      const n = t.taille || 1;
+      for(let a = 0; a < n; a++) for(let b = 0; b < n; b++)
+        if(inZone(z, t.x + (a + .5) * c.cell, t.y + (b + .5) * c.cell, poly)) return true;
+      return false;
+    }).map(t => t.nom);
+  }
+  function zoneColor(z){ if(z.owner === 'DM') return '#d6a24a'; const r = rosterOf(z.owner); return r ? r.couleur : '#9aa3ad'; }
+  function zoneLabel(z){ return SHAPES.find(s => s[0] === z.shape)[1] + ' · ' + z.r + ' ft'; }
+  function zoneSVG(z, draft){
+    const col = zoneColor(z), poly = zonePoly(z), c = C();
+    const cells = zoneCells(z).map(([x, y]) => `<rect x="${x}" y="${y}" width="${c.cell}" height="${c.cell}" fill="${col}" fill-opacity=".22"/>`).join('');
+    const shape = z.shape === 'circle'
+      ? `<circle class="z-s" cx="${z.x}" cy="${z.y}" r="${ftToPx(z.r)}" stroke="${col}" fill="${col}" fill-opacity=".10"/>`
+      : `<polygon class="z-s" points="${poly.map(p => p.join(',')).join(' ')}" stroke="${col}" fill="${col}" fill-opacity=".10"/>`;
+    return `<g class="z ${draft ? 'draft' : ''} ${z.hidden ? 'z-hid' : ''}">${cells}${shape}<circle class="z-o" cx="${z.x}" cy="${z.y}" r="4" fill="${col}"/>
+      ${draft ? '' : `<text class="z-t" x="${z.x}" y="${z.y}" fill="${col}">${esc(z.r + ' ft')}</text>`}</g>`;
+  }
+  function renderAreas(){
+    const c = C(); if(!c) return;
+    areas.setAttribute('viewBox', `0 0 ${c.w} ${c.h}`); areas.setAttribute('width', c.w); areas.setAttribute('height', c.h);
+    const zs = (c.zones || []).filter(z => editable || !z.hidden);
+    areas.innerHTML = zs.map(z => zoneSVG(z, false)).join('') + (AREA.draft ? zoneSVG(AREA.draft, true) : '');
+    if(!pArea.hidden) renderAreaList();
+  }
+  function canRemove(z){ return editable || (!!opts.me && opts.me !== '-' && z.owner === opts.me); }
+  function openAreaPanel(){
+    pCfg.hidden = true; pLib.hidden = true; pTok.hidden = true;
+    pArea.hidden = false;
+    const canPin = editable || (opts.me && opts.me !== '-');
+    pArea.innerHTML = `
+      <div class="bm-ph"><b>Spell areas</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <div class="seg ar-shapes">${SHAPES.map(([k, l]) => `<button data-shape="${k}" class="${AREA.shape === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <label for="arSize">Size <span class="bm-hint">(empty = set by dragging)</span></label>
+      <div class="bm-row"><input id="arSize" type="number" min="5" step="5" placeholder="Drag" value="${AREA.size || ''}"><span class="ar-ft">ft</span></div>
+      <p class="bm-hint">Click the origin, then drag. ${AREA.shape === 'circle' ? 'Size = radius.' : AREA.shape === 'cone' ? 'Size = length (width at the end is the same).' : AREA.shape === 'line' ? 'Size = length, 5 ft wide.' : 'Size = side.'}</p>
+      ${canPin ? `<label class="bm-check"><input id="arPin" type="checkbox" ${AREA.pin ? 'checked' : ''}> Keep on the map (pin)</label>` : ''}
+      ${editable ? `<label class="bm-check"><input id="arHid" type="checkbox" ${AREA.hidden ? 'checked' : ''}> Hidden from players</label>` : ''}
+      <div class="bm-sub">Pinned areas</div>
+      <div class="ar-list"></div>
+      ${editable ? '<button class="btn bm-del" id="arClear">Clear all</button>' : ''}`;
+    pArea.querySelector('.bm-x').onclick = () => setTool('move');
+    pArea.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => { AREA.shape = b.dataset.shape; openAreaPanel(); });
+    pArea.querySelector('#arSize').oninput = e => { const v = Math.max(0, Math.round((+e.target.value || 0) / 5) * 5); AREA.size = v; };
+    const pin = pArea.querySelector('#arPin'); if(pin) pin.onchange = e => { AREA.pin = e.target.checked; };
+    const hid = pArea.querySelector('#arHid'); if(hid) hid.onchange = e => { AREA.hidden = e.target.checked; };
+    const clr = pArea.querySelector('#arClear');
+    if(clr) clr.onclick = () => {
+      if(clr.dataset.sure !== '1'){ clr.dataset.sure = '1'; clr.textContent = 'Remove all pinned areas?'; setTimeout(() => { clr.dataset.sure = ''; clr.textContent = 'Clear all'; }, 3000); return; }
+      C().zones = []; save(); renderAreas(); toast('All areas removed');
+    };
+    renderAreaList();
+  }
+  function renderAreaList(){
+    const box = pArea.querySelector('.ar-list'); if(!box) return;
+    const zs = (C().zones || []).filter(z => editable || !z.hidden);
+    box.innerHTML = zs.length ? zs.map(z => {
+      const tg = zoneTargets(z);
+      return `<div class="ar-it"><span class="ar-dot" style="background:${zoneColor(z)}"></span>
+        <span class="ar-txt"><b>${esc(zoneLabel(z))}</b>${z.hidden ? ' <span class="tag">hidden</span>' : ''}<br><span class="bm-hint">${esc(z.owner === 'DM' ? 'DM' : z.owner)} · ${tg.length ? esc(tg.join(', ')) : 'no target'}</span></span>
+        ${canRemove(z) ? `<button class="bm-x" data-zdel="${esc(z.id)}" aria-label="Remove">✕</button>` : ''}</div>`;
+    }).join('') : '<p class="bm-hint">None. Tick “Keep on the map” before drawing to pin an area.</p>';
+    box.querySelectorAll('[data-zdel]').forEach(b => b.onclick = () => removeZone(b.dataset.zdel));
+  }
+  function removeZone(id){
+    if(editable){ C().zones = (C().zones || []).filter(z => z.id !== id); save(); }
+    else { C().zones = (C().zones || []).filter(z => z.id !== id); opts.onZoneRemove && opts.onZoneRemove(id); }
+    renderAreas();
+  }
+  function commitZone(z){
+    if(!AREA.pin || !(editable || (opts.me && opts.me !== '-'))) return;
+    const zone = Object.assign({}, z, {id:'z' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), owner: editable ? 'DM' : opts.me, hidden: editable && AREA.hidden});
+    C().zones = (C().zones || []).concat(zone);
+    if(editable) save(); else opts.onZoneAdd && opts.onZoneAdd(zone);
+  }
+  function setTool(t){
+    tool = t; root.dataset.tool = t;
+    root.querySelectorAll('button[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === t));
+    if(t === 'area') openAreaPanel(); else { pArea.hidden = true; AREA.draft = null; renderAreas(); }
+  }
+
   /* ---- Pointeur : glisser jeton, panoramique, règle, pincement ---- */
-  const pts = new Map(); let pan = null, pinch = null, rulerStart = null, lastLive = 0;
+  const pts = new Map(); let pan = null, pinch = null, rulerStart = null, lastLive = 0, areaStart = false;
   root.addEventListener('pointerdown', e => {
     if(e.target.closest('.bm-tools,.bm-panel')) return;
     root.setPointerCapture(e.pointerId);
@@ -640,6 +784,11 @@ function mountMap(host, key, opts){
       dragging = null; pan = null; rulerStart = null; return;
     }
     const tokEl = e.target.closest('.tok');
+    if(tool === 'area'){
+      const w = toWorld(e.clientX, e.clientY), c = C();
+      const ox = c.offX + Math.round((w.x - c.offX) / c.cell) * c.cell, oy = c.offY + Math.round((w.y - c.offY) / c.cell) * c.cell;
+      AREA.draft = {shape:AREA.shape, x:ox, y:oy, a:0, r:AREA.size || 5, owner: editable ? 'DM' : (opts.me && opts.me !== '-' ? opts.me : '')}; areaStart = true; renderAreas(); return;
+    }
     if(tool === 'ruler'){
       const w = toWorld(e.clientX, e.clientY), c = C();
       rulerStart = {x: snap(w.x - c.cell/2, c.offX, c.cell) + c.cell/2, y: snap(w.y - c.cell/2, c.offY, c.cell) + c.cell/2};
@@ -661,6 +810,21 @@ function mountMap(host, key, opts){
     if(pinch && pts.size === 2){
       const [a,b] = [...pts.values()], d = Math.hypot(a.x-b.x, a.y-b.y);
       zoomAt(pinch.cx, pinch.cy, (pinch.s * d / pinch.d) / view.s); return;
+    }
+    if(areaStart && AREA.draft){
+      const w = toWorld(e.clientX, e.clientY), c = C(), z = AREA.draft, dx = w.x - z.x, dy = w.y - z.y;
+      z.a = Math.atan2(dy, dx);
+      if(!AREA.size){
+        const d = z.shape === 'square' ? Math.max(Math.abs(dx), Math.abs(dy)) : Math.hypot(dx, dy);
+        z.r = Math.max(5, Math.round(d / c.cell) * 5);
+      }
+      renderAreas();
+      const tg = zoneTargets(z);
+      measure.hidden = false;
+      measure.innerHTML = `<b>${esc(zoneLabel(z))}</b>${tg.length ? ' · ' + tg.length + ' target' + (tg.length > 1 ? 's' : '') + ': ' + esc(tg.join(', ')) : ' · no target'}`;
+      const r = root.getBoundingClientRect();
+      measure.style.left = (e.clientX - r.left + 14) + 'px'; measure.style.top = (e.clientY - r.top + 14) + 'px';
+      return;
     }
     if(rulerStart){
       const w = toWorld(e.clientX, e.clientY), c = C();
@@ -693,6 +857,7 @@ function mountMap(host, key, opts){
     if(!pts.has(e.pointerId)) return;
     pts.delete(e.pointerId);
     if(pinch){ if(pts.size < 2) pinch = null; return; }
+    if(areaStart){ areaStart = false; measure.hidden = true; if(AREA.draft) commitZone(AREA.draft); AREA.draft = null; renderAreas(); return; }
     if(rulerStart){ rulerStart = null; ruler.innerHTML = ''; measure.hidden = true; return; }
     if(dragging){
       const d = dragging; dragging = null; d.el.classList.remove('drag');
@@ -724,10 +889,7 @@ function mountMap(host, key, opts){
   /* ---- Barre d'outils ---- */
   root.querySelector('.bm-tools').addEventListener('click', e => {
     const b = e.target.closest('button'); if(!b) return;
-    if(b.dataset.tool){
-      tool = b.dataset.tool; root.dataset.tool = tool;
-      root.querySelectorAll('button[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === tool));
-    }
+    if(b.dataset.tool) setTool(b.dataset.tool === tool && tool === 'area' ? 'move' : b.dataset.tool);
     if(b.dataset.act === 'fit') fit();
     if(b.dataset.act === 'add') toggleLib();
     if(b.dataset.act === 'cfg') toggleCfg();
@@ -739,7 +901,7 @@ function mountMap(host, key, opts){
   function tokFace(t){ return t.img ? `<img src="${esc(t.img)}" alt="">` : `<span>${esc(initials(t.nom))}</span>`; }
   function toggleLib(force){
     const open = force !== undefined ? force : pLib.hidden;
-    pCfg.hidden = true; pTok.hidden = true; selected = null; renderTokens();
+    pCfg.hidden = true; pTok.hidden = true; pArea.hidden = true; selected = null; renderTokens();
     pLib.hidden = !open; if(open) renderLib();
   }
   function renderLib(){
@@ -748,7 +910,7 @@ function mountMap(host, key, opts){
           <span class="lib-c" style="--tc:${esc(t.couleur)}">${tokFace(t)}</span><span class="lib-n">${esc(t.nom)}</span></button>
           <button class="lib-ed" data-${edit}="${esc(t.id)}" aria-label="Edit ${esc(t.nom)}">✎</button></div>`;
     const players = state.joueurs || [];
-    const groups = [['ennemi','Enemies'], ['pnj','NPCs'], ['figurant','Commoners']].map(([k,l]) => {
+    const groups = [['compagnon','Companions'], ['ennemi','Enemies'], ['pnj','NPCs'], ['figurant','Commoners']].map(([k,l]) => {
       const items = LIB().filter(t => t.type === k);
       return items.length ? `<div class="lib-g"><div class="lib-gt">${l}</div><div class="lib-grid">${items.map(t => item(t,'place','edit')).join('')}</div></div>` : '';
     }).join('');
@@ -759,7 +921,7 @@ function mountMap(host, key, opts){
         <p class="bm-hint">This list is what players see on the “Who are you?” screen.</p>
         <div class="lib-grid">${players.map(t => item(t,'pplace','pedit')).join('') || '<p class="bm-hint">No players yet.</p>'}</div></div>
       ${groups}
-      <button class="btn primary" id="libNew">+ New enemy, NPC or commoner</button>`;
+      <button class="btn primary" id="libNew">+ New template</button>`;
     pLib.querySelector('.bm-x').onclick = () => toggleLib(false);
     pLib.querySelector('#libNew').onclick = () => editModel(null);
     pLib.querySelector('#plNew').onclick = () => editPlayer(null);
@@ -804,14 +966,14 @@ function mountMap(host, key, opts){
       if(list.some(j => j.nom === d.nom && j.id !== id)) return toast('Another player already has that name.');
       if(id){
         Object.assign(r, d);
-        if(oldName !== d.nom) C().jetons.forEach(t => { if(t.type === 'pj' && t.nom === oldName) t.nom = d.nom; });
+        if(oldName !== d.nom){ C().jetons.forEach(t => { if(t.type === 'pj' && t.nom === oldName) t.nom = d.nom; if(t.ctrl === oldName) t.ctrl = d.nom; }); LIB().forEach(m => { if(m.ctrl === oldName) m.ctrl = d.nom; }); }
       } else list.push(Object.assign(d, {id:'p'+Date.now().toString(36)}));
       save(); renderTokens(); renderLib(); toast('Player saved');
     };
     const del = pLib.querySelector('#pdDel');
     if(del) del.onclick = () => {
       state.joueurs = list.filter(j => j.id !== id);
-      C().jetons = C().jetons.filter(t => !(t.type === 'pj' && t.nom === oldName));
+      C().jetons = C().jetons.filter(t => !(t.type === 'pj' && t.nom === oldName)); C().jetons.forEach(t => { if(t.ctrl === oldName) t.ctrl = ''; });
       save(); renderTokens(); renderLib(); toast(oldName + ' removed');
     };
     setTimeout(() => pLib.querySelector('#pdNom').focus(), 30);
@@ -836,7 +998,7 @@ function mountMap(host, key, opts){
     const c = C(), r = root.getBoundingClientRect(), w = toWorld(r.left + r.width/2, r.top + r.height/2);
     const spot = freeSpot(c, snap(w.x - c.cell/2, c.offX, c.cell), snap(w.y - c.cell/2, c.offY, c.cell));
     const t = {id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), nom:uniqueName(m.nom, m.type),
-               type:m.type, couleur:m.couleur, img:m.img || '', taille:m.taille || 1, x:spot.x, y:spot.y, visible: m.type !== 'ennemi' || m.visible !== false};
+               type:m.type, couleur:m.couleur, img:m.img || '', taille:m.taille || 1, x:spot.x, y:spot.y, visible: m.type !== 'ennemi' || m.visible !== false, ctrl:m.ctrl || ''};
     c.jetons.push(t); save(); renderTokens(); toast(t.nom + ' placed on the map');
   }
   function editModel(id){
@@ -854,11 +1016,14 @@ function mountMap(host, key, opts){
       <label for="mdCol">Color</label><input id="mdCol" type="color" value="${esc(d.couleur)}">
       <label for="mdImg">Image</label>
       <div class="bm-row"><input id="mdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="mdFile">Upload</label><input id="mdFile" type="file" accept="image/*" hidden></div>
+      <label for="mdCtrl">Controlled by</label>
+      <select id="mdCtrl">${ctrlOptions(d.ctrl)}</select>
       <div class="bm-row"><button class="btn primary" id="mdSave">Save</button>${id ? '<button class="btn bm-del" id="mdDel">Delete</button>' : ''}</div>`;
     const prev = () => { const el = pLib.querySelector('#mdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); };
     pLib.querySelector('.bm-x').onclick = renderLib;
     pLib.querySelector('#mdNom').oninput = e => { d.nom = e.target.value; prev(); };
-    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
+    pLib.querySelector('#mdCtrl').onchange = e => { d.ctrl = e.target.value; };
+    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = TYPE_COLOR[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
     pLib.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { d.taille = +b.dataset.sz; pLib.querySelectorAll('[data-sz]').forEach(x => x.classList.toggle('on', x===b)); });
     pLib.querySelector('#mdCol').oninput = e => { d.couleur = e.target.value; prev(); };
     pLib.querySelector('#mdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
@@ -891,13 +1056,15 @@ function mountMap(host, key, opts){
       <label for="tkCol">Color</label><input id="tkCol" type="color" value="${esc(t.couleur || '#888888')}">`}
       ${t.type === 'pj' ? '' : `<label for="tkImg">Image</label>
       <div class="bm-row"><input id="tkImg" placeholder="Image link (optional)" value="${esc(t.img && !t.img.startsWith('data:') ? t.img : '')}"><label class="btn" for="tkFile">Upload</label><input id="tkFile" type="file" accept="image/*" hidden></div>`}
+      ${t.type === 'pj' ? '' : `<label for="tkCtrl">Controlled by</label><select id="tkCtrl">${ctrlOptions(t.ctrl)}</select>
+      <p class="bm-hint">This player can move this token (familiar, summon, mount…).</p>`}
       <label class="bm-check"><input id="tkVis" type="checkbox" ${t.visible!==false?'checked':''}> Visible to players</label>
       <div class="bm-row">${t.type === 'pj' ? '' : '<button class="btn" id="tkLib">Add to library</button>'}<button class="btn bm-del" id="tkDel">${t.type === 'pj' ? 'Remove from map' : 'Delete'}</button></div>`;
     const upd = patch => { Object.assign(t, patch); save(); renderTokens(); };
     pTok.querySelector('.bm-x').onclick = () => select(null);
     pTok.querySelector('#tkNom').oninput = e => upd({nom:e.target.value});
     pTok.querySelector('#tkType').onchange = e => {
-      const type = e.target.value, col = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[type];
+      const type = e.target.value, col = TYPE_COLOR[type];
       upd({type, couleur:col}); select(t.id);
     };
     pTok.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { upd({taille:+b.dataset.sz}); select(t.id); });
@@ -909,6 +1076,7 @@ function mountMap(host, key, opts){
       const url = await storeImage(f); if(url){ upd({img:url}); select(t.id); }
     });
     pTok.querySelector('#tkVis').onchange = e => upd({visible:e.target.checked});
+    on('#tkCtrl', 'onchange', e => { upd({ctrl:e.target.value}); toast(e.target.value ? t.nom + ' is now controlled by ' + e.target.value : t.nom + ' is no longer controlled by a player'); });
     pTok.querySelector('#tkDel').onclick = () => { C().jetons = C().jetons.filter(j => j.id !== t.id); save(); select(null); };
     on('#tkLib', 'onclick', () => {
       const base = t.nom.replace(/\s+\d+$/, '');
@@ -930,7 +1098,7 @@ function mountMap(host, key, opts){
   function pickKeys(o, ks){ const r = {}; ks.forEach(k => { if(o[k] !== undefined) r[k] = o[k]; }); return r; }
   function storeCurrentMap(){
     const c = C(), m = MAPS().find(x => x.id === c.mapId);
-    if(m){ Object.assign(m, pickKeys(c, GRID_KEYS)); m.jetons = structuredClone(c.jetons); }
+    if(m){ Object.assign(m, pickKeys(c, GRID_KEYS)); m.jetons = structuredClone(c.jetons); m.zones = structuredClone(c.zones || []); }
   }
   function switchMap(id){
     ensureMapLib();
@@ -943,7 +1111,7 @@ function mountMap(host, key, opts){
       const cell = m.cell || 70, ox = m.offX || 0, oy = m.offY || 0;
       jetons = C().jetons.filter(t => t.type === 'pj').map((t, i) => Object.assign({}, t, {x: ox + cell * (1 + i), y: oy + cell}));
     }
-    state.carte = Object.assign({cell:70, offX:0, offY:0, grid:true}, pickKeys(m, GRID_KEYS), {mapId:id, jetons});
+    state.carte = Object.assign({cell:70, offX:0, offY:0, grid:true}, pickKeys(m, GRID_KEYS), {mapId:id, jetons, zones: m.zones ? structuredClone(m.zones) : []});
     selected = null; save(); render(); toggleCfg(true);
     toast('Map: ' + m.nom);
   }
@@ -954,7 +1122,7 @@ function mountMap(host, key, opts){
     save(); switchMap(id);
   }
   function toggleCfg(keepOpen){
-    pTok.hidden = true; pLib.hidden = true; selected = null; renderTokens();
+    pTok.hidden = true; pLib.hidden = true; pArea.hidden = true; selected = null; renderTokens();
     if(!pCfg.hidden && keepOpen !== true){ pCfg.hidden = true; return; }
     ensureMapLib();
     const c = C();
@@ -1138,6 +1306,7 @@ function ensureLive(){
   liveCh.on('presence', {event:'sync'}, () => renderPresence());
   liveCh.on('broadcast', {event:'jeton'}, m => applyJeton(m.payload));
   liveCh.on('broadcast', {event:'joueur'}, m => { applyJoueur(m.payload); });
+  liveCh.on('broadcast', {event:'zone'}, m => applyZone(m.payload));
   liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
 }
 function broadcast(){
@@ -1337,6 +1506,16 @@ function renderLeft(){
             else if(data === false) toast("Move not saved: this isn't your token.");
           });
         else save();
+      },
+      onZoneAdd:z => {
+        playerCh && playerCh.send({type:'broadcast', event:'zone', payload:{op:'add', zone:z}});
+        if(sb) sb.rpc('zone_ajouter', {code:playerCode, joueur:me, zone:z}).then(({data, error}) => {
+          if(error || data === false){ toast('Area not saved' + (error && /function|schema cache/i.test(error.message || '') ? ': the server is missing the areas setup. Tell your DM.' : '.')); }
+        });
+      },
+      onZoneRemove:id => {
+        playerCh && playerCh.send({type:'broadcast', event:'zone', payload:{op:'del', id}});
+        if(sb) sb.rpc('zone_retirer', {code:playerCode, joueur:me, zone_id:id});
       }
     });
     return;
@@ -1944,6 +2123,7 @@ async function boot(){
       .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
       .on('broadcast', {event:'jeton'}, msg => applyJeton(msg.payload))
       .on('broadcast', {event:'joueur'}, msg => applyJoueur(msg.payload))
+      .on('broadcast', {event:'zone'}, msg => applyZone(msg.payload))
       .subscribe(st => { if(st === 'SUBSCRIBED' && playerCh.track) playerCh.track({nom: me === '-' ? '' : me}); });
     // Premier passage : proposer d'importer son image de jeton
     const mine = myPlayer();
@@ -2019,16 +2199,29 @@ function openMyToken(first){
     catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
   };
 }
+/* Un joueur a posé ou retiré un gabarit de zone */
+function applyZone(p){
+  if(!state.carte || !p) return;
+  const zs = state.carte.zones || [];
+  if(p.op === 'add' && p.zone && !zs.some(z => z.id === p.zone.id)) state.carte.zones = zs.concat(p.zone);
+  if(p.op === 'del') state.carte.zones = zs.filter(z => z.id !== p.id);
+  currentMap && currentMap.refresh();
+}
 /* Un joueur a changé sa couleur ou son image */
 /* MJ : récupère ce que les joueurs ont modifié eux-mêmes (position de leur jeton, couleur, image) */
 function mergeFromDb(d){
   if(!d || !state.carte) return;
   let changed = false;
   if(d.carte && d.carte.mapId === state.carte.mapId){
-    (d.carte.jetons || []).filter(t => t.type === 'pj').forEach(t => {
+    (d.carte.jetons || []).filter(t => t.type === 'pj' || t.ctrl).forEach(t => {
       const mine = state.carte.jetons.find(j => j.id === t.id);
       if(mine && (mine.x !== t.x || mine.y !== t.y)){ mine.x = t.x; mine.y = t.y; currentMap && currentMap.moveToken(t.id, t.x, t.y); }
     });
+    // zones : celles des joueurs viennent de la base, celles du DM restent celles de cet écran
+    const dbPlayers = (d.carte.zones || []).filter(z => z.owner !== 'DM');
+    const mineDM = (state.carte.zones || []).filter(z => z.owner === 'DM');
+    const next = mineDM.concat(dbPlayers);
+    if(JSON.stringify(next) !== JSON.stringify(state.carte.zones || [])){ state.carte.zones = next; changed = true; }
   }
   (d.joueurs || []).forEach(r => {
     const mine = rosterOf(r.nom);
