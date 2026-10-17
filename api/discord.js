@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
   if (!state) return send(403, { error: 'forbidden', message: 'Access denied.' });
 
   const channel = state.discord && state.discord.channel;
-  if (!channel) return send(200, { channel: null, messages: [] }, 'public, s-maxage=3');
+  if (!channel) return send(200, { channel: null, messages: [] }, 'public, s-maxage=1');
 
   const headers = { Authorization: `Bot ${token}` };
   const r = await fetch(`https://discord.com/api/v10/channels/${channel}/messages?limit=40`, { headers });
@@ -107,5 +107,5 @@ module.exports = async (req, res) => {
   }));
 
   // Shared by every player for a few seconds: keeps Discord happy whatever the number of players.
-  send(200, { channel: name || null, messages }, 'public, s-maxage=3, stale-while-revalidate=5');
+  send(200, { channel: name || null, messages }, 'public, s-maxage=1, stale-while-revalidate=2');
 };
