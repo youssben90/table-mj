@@ -6,7 +6,7 @@
 <title>DM Table</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;500;600;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Mise en page : bandeau d'ambiance en haut, carte de combat à gauche (pleine hauteur), image + Discord à droite.
    Vue admin : même ossature, la carte est remplacée par le poste de commande, barre Spotify en bas. */
@@ -274,6 +274,19 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bm-del{color:var(--danger);margin-top:4px}
 .bm-panel output{color:var(--text);font-variant-numeric:tabular-nums}
 .who-list{display:grid;gap:8px}
+.pres-n{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:999px;font:600 11px/1.4 var(--f-mono);background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.pres-n.on{background:rgba(111,191,138,.15);color:var(--ok);border-color:rgba(111,191,138,.45)}
+.pop.pres-pop{width:min(320px,calc(100% - 24px));padding:12px;display:grid;gap:10px}
+.pres-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--f-display);letter-spacing:.05em}
+.pres-list{display:grid;gap:4px;max-height:300px;overflow-y:auto}
+.pres-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:5px 6px;border-radius:7px;opacity:.55}
+.pres-row.here{opacity:1;background:var(--panel-2)}
+.pres-row .lib-c{width:30px;height:30px;font-size:12px}
+.pres-nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pres-st{font-size:12px;color:var(--muted)}
+.pres-row.here .pres-st{color:var(--ok)}
+.pres-row.here .pres-st::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.pres-watch{display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-top:1px solid var(--line)}
 .bm-panel.bm-maps{width:min(380px,calc(100% - 70px))}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
 .map-it{position:relative;display:grid;gap:4px}
@@ -318,72 +331,58 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
 
 /* ================= Thème Parchemin =================
-   Vélin vieilli, encre sépia, accent cire rouge, filets dorés doubles. */
+   Même disposition, mêmes polices et tailles que le thème Nuit.
+   Seuls changent : les couleurs (fond, texte, accents) et le style des bordures des cadres. */
 :root[data-skin="parchemin"]{
   --ink:#d9c6a0; --panel:#f1e4c6; --panel-2:#e7d5ae; --line:#a88a58;
   --text:#2c1d0e; --muted:#6f5634; --gold:#8e2b1d; --gold-soft:rgba(142,43,29,.12);
   --blurple:#4f5a8f; --well:#2a1f14; --code-bg:#dccaa0; --on-gold:#f6ead0; --msg:#3a2a18;
-  --f-display:"IM Fell English SC", "Cinzel", Georgia, serif;
-  --f-body:"Crimson Pro", "Iowan Old Style", Georgia, serif;
-  --r:4px; color-scheme:light;
+  color-scheme:light;
 }
 [data-skin="parchemin"] body{
-  font-size:16px;
   background:
     radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(90,55,20,.35) 100%),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .08  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
     #cdb68a;
 }
-/* Cadres façon parchemin : bords irréguliers (filtre #parch-edge), bords brûlés, filet d'encre tremblé */
+/* Bordures façon parchemin, dessinées à l'intérieur du cadre : la géométrie reste identique au thème Nuit */
 [data-skin="parchemin"] .pane,
 [data-skin="parchemin"] .banner,
 [data-skin="parchemin"] .music{
-  position:relative;isolation:isolate;background:transparent;border:0;box-shadow:none;overflow:visible;padding:9px;
+  isolation:isolate;background:transparent;border-color:transparent;box-shadow:none;
 }
+[data-skin="parchemin"] .banner,
+[data-skin="parchemin"] .music{position:relative}
+[data-skin="parchemin"] .pane{position:relative}
 [data-skin="parchemin"] .pane::before,
 [data-skin="parchemin"] .banner::before,
 [data-skin="parchemin"] .music::before{
-  content:"";position:absolute;inset:2px;z-index:-2;pointer-events:none;border-radius:3px;will-change:transform;
+  content:"";position:absolute;inset:3px;z-index:-2;pointer-events:none;border-radius:var(--r);will-change:transform;
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='4' seed='3'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .3  0 0 0 0 .12  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
     radial-gradient(ellipse at 50% 45%, #f6ebd0 35%, #ead7ad 75%, #d6bb85 100%);
   box-shadow:inset 0 0 22px rgba(120,72,22,.45), inset 0 0 4px rgba(90,50,15,.5);
-  filter:url(#parch-edge) drop-shadow(0 3px 4px rgba(50,28,8,.35));
+  filter:url(#parch-edge);
 }
 [data-skin="parchemin"] .pane::after,
 [data-skin="parchemin"] .banner::after,
 [data-skin="parchemin"] .music::after{
-  content:"";position:absolute;inset:7px;z-index:-1;pointer-events:none;border-radius:4px;will-change:transform;
+  content:"";position:absolute;inset:6px;z-index:-1;pointer-events:none;border-radius:var(--r);will-change:transform;
   border:1.5px solid rgba(110,72,30,.55);
   filter:url(#parch-ink);
 }
-[data-skin="parchemin"] .pane > *,
-[data-skin="parchemin"] .banner > *,
-[data-skin="parchemin"] .music > *{position:relative}
-[data-skin="parchemin"] .music > .sp-list{position:absolute}
-[data-skin="parchemin"] .pane-b{border-radius:2px;overflow:hidden}
-[data-skin="parchemin"] .banner{gap:0}
-[data-skin="parchemin"] .banner .cell{border-right:1px solid rgba(140,105,60,.35)}
-[data-skin="parchemin"] .pane-h{border-bottom:1px solid rgba(140,105,60,.4);background:transparent}
-[data-skin="parchemin"] .pane-h h2{font:400 15px/1 var(--f-display);letter-spacing:.08em;text-transform:none;color:var(--text)}
-[data-skin="parchemin"] .pane-h h2::before,[data-skin="parchemin"] .pane-h h2::after{content:"❦";color:var(--gold);font-size:12px;margin:0 7px;opacity:.8}
-[data-skin="parchemin"] .pane-h h2::before{display:inline-block;transform:scaleX(-1)}
-[data-skin="parchemin"] .banner .lbl{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:.02em;text-transform:none;color:var(--muted)}
-[data-skin="parchemin"] .banner .val{font-size:19px}
-[data-skin="parchemin"] .banner .cell.lieu .val{font-size:22px;color:var(--gold)}
+/* Couleurs seulement */
+[data-skin="parchemin"] .banner .cell{border-right-color:rgba(140,105,60,.35)}
+[data-skin="parchemin"] .pane-h{border-bottom-color:rgba(140,105,60,.4)}
+[data-skin="parchemin"] .banner .cell.lieu .val{color:var(--gold)}
 [data-skin="parchemin"] .banner .cell.quest{background:linear-gradient(90deg,rgba(142,43,29,.1),transparent 75%)}
-[data-skin="parchemin"] .banner .cell.quest .val{font:italic 500 18px/1.2 var(--f-body)}
-[data-skin="parchemin"] .tag{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:0;text-transform:none;background:transparent}
+[data-skin="parchemin"] .tag{background:transparent}
 [data-skin="parchemin"] .tag.ex{color:var(--gold);border-color:rgba(142,43,29,.45)}
 [data-skin="parchemin"] .btn{background:#ead9b3;border-color:var(--line)}
-[data-skin="parchemin"] .btn.primary{background:var(--gold);border-color:#6d1f14;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-[data-skin="parchemin"] .empty b{font-size:21px}
-[data-skin="parchemin"] .scene{box-shadow:inset 0 0 40px rgba(0,0,0,.6)}
-[data-skin="parchemin"] .scene .cap{font-size:21px;color:#f3e6c8}
-[data-skin="parchemin"] .embed{background:rgba(255,248,230,.55);border:1px solid rgba(168,138,88,.5);border-left:4px solid var(--blurple)}
-[data-skin="parchemin"] .msg .who{font-family:var(--f-display);font-weight:400;font-size:16px}
-[data-skin="parchemin"] .av{color:#2c1d0e;box-shadow:0 0 0 1px var(--line)}
-[data-skin="parchemin"] .thumb{border-radius:3px}
+[data-skin="parchemin"] .btn.primary{background:var(--gold);border-color:#6d1f14}
+[data-skin="parchemin"] .scene .cap{color:#f3e6c8}
+[data-skin="parchemin"] .embed{background:rgba(255,248,230,.55)}
+[data-skin="parchemin"] .av{color:#2c1d0e}
 [data-skin="parchemin"] .thumb .n{color:#f3e6c8}
 [data-skin="parchemin"] .settings input,[data-skin="parchemin"] .add input[type=text],[data-skin="parchemin"] .music select{background:rgba(255,248,230,.6)}
 [data-skin="parchemin"] .seg button{background:transparent}
@@ -1133,6 +1132,7 @@ function ensureLive(){
   liveCh = null; liveReady = false; liveCode = code;
   if(!code) return;
   liveCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}});
+  liveCh.on('presence', {event:'sync'}, () => renderPresence());
   liveCh.on('broadcast', {event:'jeton'}, m => applyJeton(m.payload));
   liveCh.on('broadcast', {event:'joueur'}, m => { applyJoueur(m.payload); });
   liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
@@ -1312,10 +1312,17 @@ function renderLeft(){
   const left = $('#left');
   if(!isAdmin){
     left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
-      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}</div>
+      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
+      <div class="seg" role="group" aria-label="Theme"><button data-myskin="nuit">Night</button><button data-myskin="parchemin">Parchment</button></div></div>
       <div class="pane-b" id="mapHost"></div></div>`;
     const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
     const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
+    const markSkin = () => { const cur = document.documentElement.dataset.skin; document.querySelectorAll('[data-myskin]').forEach(b => b.classList.toggle('on', b.dataset.myskin === cur)); };
+    document.querySelectorAll('[data-myskin]').forEach(b => b.onclick = () => {
+      try{ localStorage.setItem('table-mj-theme', b.dataset.myskin); }catch(e){}
+      applySkin(); markSkin();
+    });
+    markSkin();
     currentMap = mountMap($('#mapHost'), 'table', {
       editable:false, me,
       onLive:(id,x,y) => sendJeton(id,x,y),
@@ -1336,7 +1343,7 @@ function renderLeft(){
     <div class="pane">
       <div class="pane-h"><h2>Image library</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
         <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
-        <button class="btn" id="playersBtn">Players</button>
+        <button class="btn" id="playersBtn" aria-expanded="false" aria-controls="presPop">Players <span class="pres-n" id="presN">0</span></button>
         <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
       <div id="libWrap"><div id="libCats"></div><div class="lib" id="lib"></div></div>
       <div class="add">
@@ -1346,6 +1353,7 @@ function renderLeft(){
         <input type="file" id="imgFile" accept="image/*" multiple hidden>
       </div>
     </div>
+    <div class="pop pres-pop" id="presPop" hidden></div>
     <div class="pop" id="setPop" ${settingsOpen?'':'hidden'}>
       <div class="settings">
         <label>Theme</label><div class="seg" role="group" aria-label="Theme" style="justify-self:start">
@@ -1395,10 +1403,8 @@ function renderLeft(){
     clearTimeout(pushTimer); if(pushTimer) await push();   // envoie les derniers changements
     await sb.auth.signOut(); location.reload();
   };
-  $('#playersBtn').onclick = () => {
-    if(state.split === 'notes'){ state.split = 'both'; save(); renderLeft(); }
-    currentMap && currentMap.openPlayers();
-  };
+  $('#playersBtn').onclick = e => { e.stopPropagation(); togglePresence(); };
+  renderPresence();
   $('#setBtn').onclick = e => { e.stopPropagation(); toggleSettings(!settingsOpen); };
   $('#dcUrl').onchange = e => {
     const url = e.target.value.trim();
@@ -1827,11 +1833,61 @@ function renderMusicNow(){
 }
 
 /* ============ Rendu ============ */
+/* ============ Joueurs connectés (vue MJ) ============ */
+let presOpen = false;
+function presenceList(){
+  if(!liveCh || !liveCh.presenceState) return {named:{}, watchers:0, total:0};
+  const st = liveCh.presenceState(), named = {}; let watchers = 0, total = 0;
+  Object.values(st).forEach(arr => (arr || []).forEach(p => {
+    total++;
+    if(p.nom) named[p.nom] = (named[p.nom] || 0) + 1; else watchers++;
+  }));
+  return {named, watchers, total};
+}
+function renderPresence(){
+  const {named, watchers} = presenceList();
+  const online = Object.keys(named).length;
+  const n = $('#presN'); if(n){ n.textContent = online + (watchers ? ' +' + watchers : ''); n.classList.toggle('on', online + watchers > 0); }
+  const pop = $('#presPop'); if(!pop || pop.hidden) return;
+  const roster = state.joueurs || [];
+  const extra = Object.keys(named).filter(nm => !roster.some(r => r.nom === nm));
+  const row = (nom, col, img, here, twice) => `<div class="pres-row ${here ? 'here' : ''}">
+      <span class="lib-c" style="--tc:${esc(col)}">${img ? `<img src="${esc(img)}" alt="">` : `<span>${esc(initials(nom))}</span>`}</span>
+      <span class="pres-nm">${esc(nom)}</span>
+      <span class="pres-st">${here ? (twice > 1 ? 'Online · ' + twice + ' tabs' : 'Online') : 'Offline'}</span></div>`;
+  pop.innerHTML = `
+    <div class="pres-h"><b>At the table</b><span class="tag">${online} of ${roster.length} players</span></div>
+    ${!state.codeJoueurs ? '<p class="bm-hint">Set a player code in ⚙ Settings to open the player view.</p>' : ''}
+    <div class="pres-list">${roster.map(r => row(r.nom, r.couleur, r.img, !!named[r.nom], named[r.nom])).join('')}
+      ${extra.map(nm => row(nm, '#888', '', true, named[nm])).join('')}
+      ${roster.length || extra.length ? '' : '<p class="bm-hint">No players yet.</p>'}</div>
+    <div class="pres-watch"><span>👁 Just watching</span><b>${watchers}</b></div>
+    <button class="btn" id="presEdit">Manage players</button>`;
+  $('#presEdit').onclick = () => {
+    togglePresence(false);
+    if(state.split === 'notes'){ state.split = 'both'; save(); renderLeft(); }
+    currentMap && currentMap.openPlayers();
+  };
+}
+function togglePresence(open){
+  presOpen = open === undefined ? !presOpen : open;
+  const pop = $('#presPop'); if(!pop) return;
+  pop.hidden = !presOpen; $('#playersBtn').setAttribute('aria-expanded', presOpen);
+  if(presOpen){ toggleSettings(false); renderPresence(); }
+}
+document.addEventListener('mousedown', e => {
+  if(presOpen && !e.target.closest('#presPop,#playersBtn')) togglePresence(false);
+});
 function renderChannel(){
   const d = state.discord || {};
   $('#chanTitle').textContent = d.label ? '#' + d.label : 'Discord';
 }
-function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
+function mySkin(){ try{ return localStorage.getItem('table-mj-theme') || ''; }catch(e){ return ''; } }
+function applySkin(){
+  const sk = (!isAdmin && mySkin()) || state.skin || 'nuit';
+  document.documentElement.dataset.skin = sk;
+  document.querySelectorAll('[data-myskin]').forEach(b => b.classList.toggle('on', b.dataset.myskin === sk));
+}
 function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
 document.title = isAdmin ? 'DM Table · Admin' : 'DM Table';
 function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
@@ -1868,11 +1924,12 @@ async function boot(){
     Object.assign(state, data);
     for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);
     renderAll();
-    playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}})
+    const tabId = 'v' + Math.random().toString(36).slice(2, 10);
+    playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}, presence:{key:tabId}}})
       .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
       .on('broadcast', {event:'jeton'}, msg => applyJeton(msg.payload))
       .on('broadcast', {event:'joueur'}, msg => applyJoueur(msg.payload))
-      .subscribe();
+      .subscribe(st => { if(st === 'SUBSCRIBED' && playerCh.track) playerCh.track({nom: me === '-' ? '' : me}); });
     // Premier passage : proposer d'importer son image de jeton
     const mine = myPlayer();
     let asked = false; try{ asked = sessionStorage.getItem('table-mj-jeton-propose') === '1'; }catch(e){}
