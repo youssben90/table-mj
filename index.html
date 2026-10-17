@@ -298,7 +298,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .pop.pres-pop{width:min(320px,calc(100% - 24px));padding:12px;display:grid;gap:10px}
 .pres-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--f-display);letter-spacing:.05em}
 .pres-list{display:grid;gap:4px;max-height:300px;overflow-y:auto}
-.pres-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:5px 6px;border-radius:7px;opacity:.55}
+.pres-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:5px 6px;border-radius:7px;opacity:.55}
 .pres-row.here{opacity:1;background:var(--panel-2)}
 .pres-row .lib-c{width:30px;height:30px;font-size:12px}
 .pres-nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -346,6 +346,17 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .modal-card h2{margin:0;font:700 20px var(--f-display);color:var(--gold);letter-spacing:.04em}
 .modal-card p{margin:0;color:var(--muted);font-size:14px}
 .modal-card .btn{padding:9px;text-align:center}
+.modal-card input{width:100%}
+.viewer{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.6)}
+.viewer[hidden]{display:none}
+.viewer-win{width:94vw;height:90vh;display:grid;grid-template-rows:auto 1fr auto;background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.viewer-bar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line, rgba(127,127,127,.3))}
+.viewer-bar b{color:var(--gold);white-space:nowrap}
+.viewer-url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}
+.viewer-win iframe{width:100%;height:100%;border:0;background:#fff}
+.viewer-foot{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;padding:6px 10px;color:var(--muted);font-size:12px}
+.viewer-mode{display:flex;align-items:center;gap:6px;cursor:pointer}
+.pres-row .pres-sheet{padding:2px 8px;font-size:12px}
 .btn.who{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:15px;text-align:left}
 .btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
 
@@ -462,6 +473,20 @@ img.av{object-fit:cover;background:var(--panel-2)}
 </div>
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal" hidden></div>
+<div class="viewer" id="viewer" hidden>
+  <div class="viewer-win" role="dialog" aria-labelledby="vwT">
+    <div class="viewer-bar">
+      <b id="vwT"></b><span class="viewer-url" id="vwUrl"></span>
+      <button class="btn" id="vwChange" hidden>Change link</button>
+      <button class="btn" id="vwRefresh" title="Refresh">⟳ Refresh</button>
+      <button class="btn" id="vwPop" title="Open in a separate window">⧉ Pop-out</button>
+      <button class="btn" id="vwClose" title="Close (Esc)">✕ Close</button>
+    </div>
+    <iframe id="vwFrame" title="D&amp;D Beyond" allow="clipboard-write; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="viewer-foot"><span>Blank or “refused to connect”? D&amp;D Beyond doesn't allow being shown inside other sites: use ⧉ Pop-out.</span>
+      <label class="viewer-mode"><input type="checkbox" id="vwMode"> Always open in a separate window</label></div>
+  </div>
+</div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm">
     <h1>DM Table</h1>
@@ -477,7 +502,7 @@ img.av{object-fit:cover;background:var(--panel-2)}
 <script src="config.js"></script>
 <script>
 /* ============ État partagé ============ */
-const SITE_VERSION = '1.7';   // à augmenter à chaque mise à jour
+const SITE_VERSION = '1.8';   // à augmenter à chaque mise à jour
 const KEY = 'table-mj-state-v1';
 const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
 
@@ -951,7 +976,9 @@ function mountMap(host, key, opts){
       <label for="pdImg">Picture</label>
       <div class="bm-row"><input id="pdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="pdFile">Upload</label><input id="pdFile" type="file" accept="image/*" hidden></div>
       <button class="btn" id="pdNoImg" ${d.img ? '' : 'hidden'}>Remove picture (back to initial)</button>
-      <p class="bm-hint">Players can also pick their own color and picture from the player view.</p>
+      <label for="pdDdb">D&amp;D Beyond sheet</label>
+      <div class="bm-row"><input id="pdDdb" placeholder="https://www.dndbeyond.com/characters/…" value="${esc(d.ddb || '')}">${d.ddb ? '<button class="btn" id="pdDdbOpen">Open</button>' : ''}</div>
+      <p class="bm-hint">Players can also pick their own color, picture and sheet link from the player view.</p>
       <div class="bm-row"><button class="btn primary" id="pdSave">Save</button>${id ? '<button class="btn bm-del" id="pdDel">Delete player</button>' : ''}</div>`;
     const prev = () => { const el = pLib.querySelector('#pdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); pLib.querySelector('#pdNoImg').hidden = !d.img; };
     pLib.querySelector('.bm-x').onclick = renderLib;
@@ -959,11 +986,14 @@ function mountMap(host, key, opts){
     pLib.querySelector('#pdCol').oninput = e => { d.couleur = e.target.value; prev(); };
     pLib.querySelector('#pdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
     pLib.querySelector('#pdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
+    pLib.querySelector('#pdDdb').onchange = e => { d.ddb = e.target.value.trim(); };
+    const ddbO = pLib.querySelector('#pdDdbOpen'); if(ddbO) ddbO.onclick = () => openViewer(r.ddb, r.nom + ' · character sheet');
     pLib.querySelector('#pdNoImg').onclick = () => { d.img = ''; pLib.querySelector('#pdImg').value = ''; prev(); };
     pLib.querySelector('#pdSave').onclick = () => {
       d.nom = d.nom.trim();
       if(!d.nom) return toast('Give the player a name.');
       if(list.some(j => j.nom === d.nom && j.id !== id)) return toast('Another player already has that name.');
+      if(d.ddb && !ddbOk(d.ddb)) return toast('The sheet link must be a D&D Beyond link (https://www.dndbeyond.com/…)');
       if(id){
         Object.assign(r, d);
         if(oldName !== d.nom){ C().jetons.forEach(t => { if(t.type === 'pj' && t.nom === oldName) t.nom = d.nom; if(t.ctrl === oldName) t.ctrl = d.nom; }); LIB().forEach(m => { if(m.ctrl === oldName) m.ctrl = d.nom; }); }
@@ -1232,6 +1262,7 @@ const DEFAULT = {
   ambiance:{lieu:'Valbrune', jour:'3rd of Flamerule', heure:'Dusk', meteo:'Light rain', objectif:"Find Master Aldric's missing apprentice"},
   music:{playlistId:''},
   spotifyClientId:'',
+  ddbCampaign:'',
   cartesBiblio:[],
   imageCats:[],
   mapCats:[],
@@ -1269,7 +1300,7 @@ const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
 // anciennes versions : la connexion MJ était mémorisée durablement, on l'efface
 try{ Object.keys(localStorage).filter(k => /^sb-.*-auth-token$/.test(k)).forEach(k => localStorage.removeItem(k)); }catch(e){}
 const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
-const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats'];                                   // réservés au MJ
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats','ddbCampaign'];                                   // réservés au MJ
 const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
 let session = null, pushTimer = null;
 
@@ -1484,11 +1515,12 @@ function renderLeft(){
   const left = $('#left');
   if(!isAdmin){
     left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
-      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
+      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button><button class="btn" id="mySheet">My sheet</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}
       <div class="seg" role="group" aria-label="Theme"><button data-myskin="nuit">Night</button><button data-myskin="parchemin">Parchment</button></div></div>
       <div class="pane-b" id="mapHost"></div></div>`;
     const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
     const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
+    const ms = $('#mySheet'); if(ms) ms.onclick = () => openMySheet();
     const markSkin = () => { const cur = document.documentElement.dataset.skin; document.querySelectorAll('[data-myskin]').forEach(b => b.classList.toggle('on', b.dataset.myskin === cur)); };
     document.querySelectorAll('[data-myskin]').forEach(b => b.onclick = () => {
       try{ localStorage.setItem('table-mj-theme', b.dataset.myskin); }catch(e){}
@@ -1526,6 +1558,7 @@ function renderLeft(){
       <div class="pane-h"><h2>Image library</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
         <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
         <button class="btn" id="playersBtn" aria-expanded="false" aria-controls="presPop">Players <span class="pres-n" id="presN">0</span></button>
+        <button class="btn" id="ddbBtn" title="Open your D&amp;D Beyond campaign">D&amp;D Beyond</button>
         <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
       <div id="libWrap"><div id="libCats"></div><div class="lib" id="lib"></div></div>
       <div class="add">
@@ -1545,6 +1578,7 @@ function renderLeft(){
         <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Link to a Google Doc or a .txt / .pdf file on Drive" value="${esc(state.notesUrl)}">
         <label for="codeJ">Player code</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="e.g. red-dragon" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'Share this with your players' : 'Player view locked until a code is set'}</span></div>
         <label for="spId">Spotify Client ID</label><input id="spId" placeholder="From developer.spotify.com > your app > Settings" value="${esc(state.spotifyClientId)}" autocomplete="off">
+        <label for="ddbUrl">D&amp;D Beyond campaign</label><input id="ddbUrl" placeholder="https://www.dndbeyond.com/campaigns/…" value="${esc(state.ddbCampaign || '')}" autocomplete="off">
         <label for="dcUrl">Discord channel</label><div class="dc-row"><input id="dcUrl" placeholder="Channel link: https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Display name" value="${esc(state.discord.label)}"></div>
       </div>
       <div class="pop-foot"><span class="ver">Site version ${SITE_VERSION}</span>${sb ? `<button class="btn" id="logoutBtn">Sign out</button>` : ''}</div>
@@ -1606,6 +1640,17 @@ function renderLeft(){
     state.spotifyClientId = v; save();
     sp.tok = null; spStore(); renderMusic();
     toast(v ? 'Spotify Client ID saved' : 'Spotify Client ID removed');
+  };
+  $('#ddbBtn').onclick = () => {
+    if(!state.ddbCampaign){ if(!settingsOpen) toggleSettings(true); setTimeout(() => { const i = $('#ddbUrl'); i && i.focus(); }, 0); toast('Paste your D&D Beyond campaign link in Settings first'); return; }
+    openViewer(state.ddbCampaign, 'D&D Beyond campaign');
+  };
+  $('#ddbUrl').onchange = e => {
+    const v = e.target.value.trim();
+    if(v && !ddbOk(v)){ toast('That is not a D&D Beyond link (https://www.dndbeyond.com/…)'); e.target.value = state.ddbCampaign || ''; return; }
+    if(v === (state.ddbCampaign || '')) return;
+    state.ddbCampaign = v; save();
+    toast(v ? 'D&D Beyond campaign saved' : 'D&D Beyond campaign removed');
   };
   $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
 
@@ -2033,18 +2078,22 @@ function renderPresence(){
   const pop = $('#presPop'); if(!pop || pop.hidden) return;
   const roster = state.joueurs || [];
   const extra = Object.keys(named).filter(nm => !roster.some(r => r.nom === nm));
-  const row = (nom, col, img, here, twice) => `<div class="pres-row ${here ? 'here' : ''}">
+  const row = (nom, col, img, here, twice, ddb) => `<div class="pres-row ${here ? 'here' : ''}">
       <span class="lib-c" style="--tc:${esc(col)}">${img ? `<img src="${esc(img)}" alt="">` : `<span>${esc(initials(nom))}</span>`}</span>
       <span class="pres-nm">${esc(nom)}</span>
-      <span class="pres-st">${here ? (twice > 1 ? 'Online · ' + twice + ' tabs' : 'Online') : 'Offline'}</span></div>`;
+      <span class="pres-st">${here ? (twice > 1 ? 'Online · ' + twice + ' tabs' : 'Online') : 'Offline'}</span>${ddb ? `<button class="btn pres-sheet" data-sheet="${esc(nom)}" title="Open ${esc(nom)}'s D&amp;D Beyond sheet">Sheet</button>` : ''}</div>`;
   pop.innerHTML = `
     <div class="pres-h"><b>At the table</b><span class="tag">${online} of ${roster.length} players</span></div>
     ${!state.codeJoueurs ? '<p class="bm-hint">Set a player code in ⚙ Settings to open the player view.</p>' : ''}
-    <div class="pres-list">${roster.map(r => row(r.nom, r.couleur, r.img, !!named[r.nom], named[r.nom])).join('')}
+    <div class="pres-list">${roster.map(r => row(r.nom, r.couleur, r.img, !!named[r.nom], named[r.nom], r.ddb)).join('')}
       ${extra.map(nm => row(nm, '#888', '', true, named[nm])).join('')}
       ${roster.length || extra.length ? '' : '<p class="bm-hint">No players yet.</p>'}</div>
     <div class="pres-watch"><span>👁 Just watching</span><b>${watchers}</b></div>
     <button class="btn" id="presEdit">Manage players</button>`;
+  pop.querySelectorAll('[data-sheet]').forEach(b => b.onclick = () => {
+    const r = rosterOf(b.dataset.sheet); if(!r || !r.ddb) return;
+    togglePresence(false); openViewer(r.ddb, r.nom + ' · character sheet');
+  });
   $('#presEdit').onclick = () => {
     togglePresence(false);
     if(state.split === 'notes'){ state.split = 'both'; save(); renderLeft(); }
@@ -2199,6 +2248,73 @@ function openMyToken(first){
     catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
   };
 }
+/* D&D Beyond : fenêtre "navigateur" au-dessus du site */
+function ddbOk(u){ return /^https:\/\/([a-z0-9-]+\.)*(dndbeyond\.com|ddb\.ac)(\/\S*)?$/i.test(u || '') && u.length <= 500; }
+function ddbPopMode(){ try{ return localStorage.getItem('table-mj-ddb-mode') === 'pop'; }catch(e){ return false; } }
+function popOut(url){
+  const w = Math.min(1280, screen.availWidth - 40), h = Math.min(960, screen.availHeight - 60);
+  const win = window.open(url, 'dm-table-ddb', `popup,width=${w},height=${h},left=${Math.max(0,(screen.availWidth - w) / 2)},top=${Math.max(0,(screen.availHeight - h) / 2)}`);
+  if(win) win.focus(); else toast('Your browser blocked the window: allow pop-ups for this site.');
+}
+let viewerUrl = '';
+function openViewer(url, title, onChange){
+  if(!url) return;
+  if(ddbPopMode()){ popOut(url); return; }
+  viewerUrl = url;
+  const v = $('#viewer');
+  $('#vwT').textContent = title || 'D&D Beyond';
+  $('#vwUrl').textContent = url;
+  const ch = $('#vwChange'); ch.hidden = !onChange; ch.onclick = () => { closeViewer(); onChange(); };
+  $('#vwMode').checked = false;
+  $('#vwFrame').src = url;
+  v.hidden = false;
+}
+function closeViewer(){ const v = $('#viewer'); if(v.hidden) return; v.hidden = true; $('#vwFrame').src = 'about:blank'; }
+$('#vwClose').onclick = closeViewer;
+$('#vwRefresh').onclick = () => { const f = $('#vwFrame'); f.src = 'about:blank'; setTimeout(() => { f.src = viewerUrl; }, 30); };
+$('#vwPop').onclick = () => { const u = viewerUrl; closeViewer(); popOut(u); };
+$('#vwMode').onchange = e => {
+  try{ localStorage.setItem('table-mj-ddb-mode', e.target.checked ? 'pop' : 'frame'); }catch(err){}
+  if(e.target.checked){ const u = viewerUrl; closeViewer(); popOut(u); toast('D&D Beyond will now open in a separate window'); }
+};
+$('#viewer').onclick = e => { if(e.target.id === 'viewer') closeViewer(); };
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeViewer(); });
+/* Joueur : sa fiche de personnage */
+function openMySheet(){
+  const r = myPlayer(); if(!r) return;
+  if(r.ddb) openViewer(r.ddb, r.nom + ' · character sheet', askMySheet);
+  else askMySheet();
+}
+function askMySheet(){
+  const r = myPlayer(); if(!r) return;
+  const m = $('#modal');
+  m.hidden = false;
+  m.innerHTML = `<div class="modal-card" role="dialog" aria-labelledby="msT">
+    <h2 id="msT">My sheet</h2>
+    <p>Paste the link to ${esc(r.nom)}'s character sheet on D&amp;D Beyond. Your DM will be able to open it too.</p>
+    <input id="msUrl" placeholder="https://www.dndbeyond.com/characters/…" value="${esc(r.ddb || '')}" autocomplete="off">
+    <button class="btn primary" id="msSave">Save and open</button>
+    ${r.ddb ? '<button class="btn" id="msDel">Remove the link</button>' : ''}
+    <button class="btn" id="msClose">Cancel</button>
+  </div>`;
+  const inp = $('#msUrl'); inp.focus();
+  async function commit(v){
+    if(v && !ddbOk(v)) return toast('That is not a D&D Beyond link (https://www.dndbeyond.com/…)');
+    if(sb){
+      const { data, error } = await sb.rpc('ma_fiche', {code:playerCode, joueur:me, lien:v});
+      if(error || data === false){ toast('Not saved. Try again or ask your DM.'); return; }
+    } else save();
+    r.ddb = v; m.hidden = true;
+    playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:{nom:r.nom, ddb:v}});
+    if(v){ toast('Sheet saved'); openViewer(v, r.nom + ' · character sheet', askMySheet); }
+    else toast('Sheet link removed');
+  }
+  $('#msSave').onclick = () => commit(inp.value.trim());
+  inp.onkeydown = e => { if(e.key === 'Enter') commit(inp.value.trim()); };
+  const del = $('#msDel'); if(del) del.onclick = () => commit('');
+  $('#msClose').onclick = () => { m.hidden = true; };
+  m.onclick = e => { if(e.target === m) m.hidden = true; };
+}
 /* Un joueur a posé ou retiré un gabarit de zone */
 function applyZone(p){
   if(!state.carte || !p) return;
@@ -2226,6 +2342,7 @@ function mergeFromDb(d){
   (d.joueurs || []).forEach(r => {
     const mine = rosterOf(r.nom);
     if(mine && (mine.couleur !== r.couleur || (mine.img || '') !== (r.img || ''))){ mine.couleur = r.couleur; mine.img = r.img || ''; changed = true; }
+    if(mine && (mine.ddb || '') !== (r.ddb || '')){ mine.ddb = r.ddb || ''; renderPresence(); }
   });
   if(changed && currentMap) currentMap.refresh();
 }
@@ -2233,6 +2350,7 @@ function applyJoueur(p){
   const r = rosterOf(p.nom); if(!r) return;
   if(p.couleur) r.couleur = p.couleur;
   if(p.img !== undefined) r.img = p.img;
+  if(p.ddb !== undefined){ r.ddb = p.ddb; if(isAdmin) renderPresence(); }
   currentMap && currentMap.refresh();
 }
 function chooseIdentity(data){
