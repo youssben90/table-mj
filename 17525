@@ -1,0 +1,2015 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DM Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;500;600;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Mise en page : bandeau d'ambiance en haut, carte de combat à gauche (pleine hauteur), image + Discord à droite.
+   Vue admin : même ossature, la carte est remplacée par le poste de commande, barre Spotify en bas. */
+:root{
+  --ink:#0f1318;        /* fond général, encre bleu nuit */
+  --panel:#171c23;      /* cadrans */
+  --panel-2:#1f262f;    /* champs, éléments surélevés */
+  --line:#2b3440;       /* bordures */
+  --text:#e7e2d8;       /* texte principal, ivoire froid */
+  --muted:#8d97a3;      /* texte secondaire */
+  --gold:#d6a24a;       /* accent : or de chandelle */
+  --gold-soft:rgba(214,162,74,.14);
+  --blurple:#7d86e8;    /* touche Discord */
+  --danger:#d9705f;
+  --ok:#6fbf8a;
+  --f-display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --well:#0b0e12; --code-bg:#11151a; --on-gold:#1a1408; --msg:#d4d0c8;
+  --r:10px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--text);font:15px/1.45 var(--f-body);overflow:hidden}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:10px 12px}
+
+/* ---------- Bandeau ---------- */
+.banner{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-height:52px}
+.banner .cell{display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-right:1px solid var(--line);min-width:0}
+.banner .cell:last-child{border-right:0}
+.banner .lbl{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.banner .val{font-family:var(--f-display);font-size:17px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner .cell.lieu .val{font-size:20px;color:var(--gold)}
+.banner .cell.quest{flex:1;background:linear-gradient(90deg,var(--gold-soft),transparent 70%)}
+.banner .cell.quest .val{font-family:var(--f-body);font-size:16px;font-weight:500;letter-spacing:0}
+.banner input.val{background:transparent;border:0;border-bottom:1px dashed var(--line);padding:0;width:100%;min-width:90px}
+.banner input.val:focus{outline:none;border-bottom-color:var(--gold)}
+
+/* ---------- Grille principale ---------- */
+.main{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:10px;min-height:0}
+.col{display:grid;gap:10px;min-height:0}
+.col.right{grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.col > *, .pane > *, #libWrap{min-width:0}
+.pane-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none}
+.pane-h h2{margin:0;font:700 12px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.pane-h .sp{flex:1}
+.pane-b{flex:1;min-height:0;position:relative}
+.tag{font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:4px;background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.tag.ex{color:var(--gold);border-color:rgba(214,162,74,.4)}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:13px}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--on-gold);border-color:var(--gold);font-weight:700}
+a.btn{text-decoration:none;color:var(--text)}
+
+iframe.fill{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--well)}
+
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted)}
+.empty b{display:block;font-family:var(--f-display);color:var(--text);font-size:18px;margin-bottom:6px;letter-spacing:.04em}
+
+/* Image de scène */
+.scene{position:absolute;inset:0;display:grid;place-items:center;background:var(--well)}
+.scene img{max-width:100%;max-height:100%;object-fit:contain;transition:opacity .35s}
+.scene .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 14px 10px;background:linear-gradient(transparent,rgba(0,0,0,.75));font-family:var(--f-display);font-size:18px;letter-spacing:.04em}
+
+/* ---------- Discord / Avrae ---------- */
+.feed{position:absolute;inset:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:12px}
+.msg{display:grid;grid-template-columns:32px 1fr;gap:10px}
+.av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--f-body);color:#0f1318}
+.msg .who{font-weight:700;font-size:14px}
+.msg .who .bot{font:600 9px/1 var(--f-mono);background:var(--blurple);color:#fff;padding:2px 4px;border-radius:3px;margin-left:6px;vertical-align:2px}
+.msg .when{color:var(--muted);font-size:11px;margin-left:6px;font-weight:400}
+.msg .txt{font-size:14px;color:var(--msg)}
+.embed{margin-top:4px;background:var(--panel-2);border-left:4px solid var(--blurple);border-radius:4px;padding:8px 10px;font-size:13px}
+.embed .t{font-weight:700;margin-bottom:4px}
+.embed .f{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px 12px;margin-top:6px}
+.embed .f .k{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.embed code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);padding:1px 4px;border-radius:3px}
+.crit{color:var(--ok);font-weight:700}
+img.av{object-fit:cover;background:var(--panel-2)}
+.txt pre,.embed pre{white-space:pre-wrap;font:12px/1.4 var(--f-mono);background:var(--code-bg);padding:6px 8px;border-radius:4px;margin:4px 0}
+.txt code,.embed code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);padding:1px 4px;border-radius:3px}
+.embed{position:relative;overflow-wrap:anywhere}
+.embed .f .full{grid-column:1/-1}
+.e-au{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.e-de{margin-top:2px}
+.e-fo{font-size:11px;color:var(--muted);margin-top:6px}
+.e-th{float:right;width:48px;height:48px;object-fit:cover;border-radius:4px;margin:0 0 4px 8px}
+.e-im{display:block;max-width:100%;max-height:220px;border-radius:4px;margin-top:6px}
+.ment{color:var(--blurple);background:rgba(125,134,232,.15);border-radius:3px;padding:0 2px}
+.emo{width:18px;height:18px;vertical-align:-4px}
+.quote{display:block;border-left:3px solid var(--line);padding-left:8px;color:var(--muted)}
+.txt a,.embed a{color:var(--blurple)}
+
+/* ---------- Admin ---------- */
+.console{grid-template-rows:auto minmax(0,1fr)}
+.lib{display:flex;gap:8px;padding:6px 12px 10px;overflow-x:auto;overflow-y:hidden;height:136px;align-items:flex-start;scrollbar-width:thin;scroll-snap-type:x proximity}
+.lib > p{align-self:center}
+#libCats .cat-bar{padding:10px 12px 0}
+.sc-it{display:grid;gap:4px;align-content:start;flex:0 0 124px;scroll-snap-align:start}
+.cat-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cat-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);overflow:hidden}
+.cat-chip.on{border-color:var(--gold);background:var(--gold-soft)}
+.cat-chip.over{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.cat-b{border:0;background:transparent;padding:4px 10px;font-size:12px;display:inline-flex;gap:6px;align-items:center}
+.cat-chip.on .cat-b{color:var(--gold)}
+.cat-n{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cat-ed{border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);font-size:11px;padding:4px 8px}
+.cat-ed:hover{color:var(--text)}
+.cat-ed.warn{color:var(--danger)}
+.cat-add{border:1px dashed var(--line);border-radius:999px;background:transparent;color:var(--muted);font-size:12px;padding:4px 10px}
+.cat-add:hover{color:var(--gold);border-color:var(--gold)}
+.cat-in{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--gold);background:var(--panel-2);width:140px}
+.cat-sel{font-size:11px;padding:2px 4px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--muted);width:100%;min-width:0}
+.thumb{position:relative;border:2px solid transparent;border-radius:8px;overflow:hidden;background:var(--well);aspect-ratio:4/3;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .n{position:absolute;left:0;right:0;bottom:0;padding:12px 6px 4px;font-size:12px;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumb.on{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.thumb .x{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:13px;line-height:1;display:none}
+.thumb:hover .x{display:block}
+.add{display:flex;gap:6px;padding:0 12px 10px;flex-wrap:wrap}
+.add input[type=text]{flex:1;min-width:140px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+.settings{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);font-size:13px}
+.settings label{color:var(--muted)}
+.settings input{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px;width:100%;font-family:var(--f-mono);font-size:12px}
+
+
+/* Connexion */
+.login{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:var(--ink)}
+.login-card{width:min(360px,100%);display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.login-card h1{margin:0;font:700 22px var(--f-display);letter-spacing:.06em;color:var(--gold)}
+.login-card p{margin:0 0 8px;color:var(--muted);font-size:14px}
+.login-card label{font-size:13px;color:var(--muted)}
+.login-card input{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+.login-card .btn{margin-top:8px;padding:9px}
+.login-err{color:var(--danger)!important;margin:4px 0 0!important}
+.code-hint{align-self:center;font-size:12px;color:var(--muted)}
+.tag.sync.ok{color:var(--ok);border-color:rgba(111,191,138,.4)}
+.tag.sync.err{color:var(--danger);border-color:rgba(217,112,95,.5)}
+/* Fenêtre de réglages */
+.col.left{position:relative}
+.pop{position:absolute;top:46px;right:12px;width:min(620px,calc(100% - 24px));z-index:20;background:var(--panel);
+  border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.pop .settings{border-top:0;padding:14px}
+.ver{margin-right:auto;align-self:center;font:600 11px var(--f-mono);color:var(--muted)}
+.pop-foot{display:flex;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--line)}
+.reader iframe.fill{background:#fff}
+/* Salon Discord */
+.dc-row{display:grid;grid-template-columns:1fr 150px;gap:6px}
+.settings input.dc-label{font-family:var(--f-body);font-size:13px}
+/* Carte & notes partagées */
+.split{display:grid;grid-template-columns:1fr 1fr}
+.split .half{position:relative;min-width:0}
+.split .half + .half{border-left:1px solid var(--line)}
+.split[data-mode="map"]{grid-template-columns:1fr}
+.split[data-mode="map"] #notes,.split[data-mode="notes"] #miniMap{display:none}
+.split[data-mode="notes"]{grid-template-columns:1fr}
+.split[data-mode="notes"] .half{border-left:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{background:var(--panel-2);border:0;padding:4px 10px;font-size:12px;color:var(--muted)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--gold-soft);color:var(--gold)}
+.settings input.cap-in{font-family:var(--f-body);font-size:14px}
+.settings input:disabled{opacity:.5}
+
+/* ---------- Spotify ---------- */
+.music{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:8px 14px}
+.music .ctl{display:flex;gap:6px}
+.music .ctl button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);display:grid;place-items:center}
+.music .ctl button.play{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.music .now{min-width:0}
+.music .now .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music .now .a{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;max-width:220px;min-width:0}
+.music{position:relative}
+.music.off{grid-template-columns:auto minmax(0,1fr) auto}
+.sp-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);font-size:18px}
+.music .ctl button.sm{width:28px;height:28px;font-size:13px;color:var(--muted)}
+.music .ctl button.sm.on{color:var(--gold);border-color:var(--gold)}
+.sp-now{display:flex;gap:10px;align-items:center;width:260px}
+.sp-now img{width:40px;height:40px;border-radius:4px;object-fit:cover;flex:none}
+.sp-bar{height:3px;background:var(--line);border-radius:2px;margin-top:5px;overflow:hidden}
+.sp-bar div{height:100%;background:var(--gold);width:0;transition:width .5s linear}
+.sp-pick{display:flex;gap:8px;align-items:center;min-width:0}
+.sp-out{padding:4px 8px}
+.sp-dev{cursor:pointer;background:var(--panel-2)}
+.sp-dev:hover{border-color:var(--gold)}
+.sp-list.sp-devs{left:auto;right:12px;transform:none;width:min(340px,calc(100vw - 32px))}
+.sp-row.dev{grid-template-columns:28px minmax(0,1fr) auto}
+.sp-row:disabled{opacity:.45;cursor:not-allowed}
+.sp-list{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));max-height:min(420px,60vh);display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 -12px 40px rgba(0,0,0,.5);z-index:30}
+.sp-lh{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.sp-lh b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--f-display)}
+.sp-lh input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+.sp-items{overflow-y:auto;padding:6px;display:grid;gap:2px}
+.sp-items .bm-hint{padding:8px}
+.sp-row{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,.7fr);gap:10px;align-items:center;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:6px}
+.sp-row:hover{background:var(--panel-2)}
+.sp-row.on{background:var(--gold-soft);color:var(--gold)}
+.sp-row .n{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.sp-row .tt,.sp-row .ar{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-row .ar{color:var(--muted);font-size:13px}
+.tracks{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.tracks button{flex:none;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap}
+.tracks button.on{border-color:var(--gold);color:var(--gold)}
+.vol{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.vol input{width:90px;accent-color:var(--gold)}
+
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+
+
+/* ---------- Carte de combat ---------- */
+.bm{position:absolute;inset:0;overflow:hidden;background:var(--well);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.bm[data-tool="ruler"]{cursor:crosshair}
+.bm-world{position:absolute;left:0;top:0;transform-origin:0 0}
+.bm-img{display:block;width:100%;height:100%;max-width:none;pointer-events:none}
+.bm-grid{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.bm.far .tok-n{display:none}
+.bm.far .tok:hover .tok-n,.bm.far .tok.sel .tok-n{display:block}
+.bm-ruler{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.bm-tokens{position:absolute;inset:0}
+.tok{position:absolute;pointer-events:auto;display:grid;place-items:center}
+.tok.mov{cursor:grab}
+.tok.drag{cursor:grabbing;z-index:5;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))}
+.tok-c{width:88%;height:88%;border-radius:50%;background:var(--tc);border:calc(3px * var(--inv,1)) solid #f3ead8;
+  box-shadow:0 2px 6px rgba(0,0,0,.6);display:grid;place-items:center;overflow:hidden;color:#fff;
+  font:700 calc(18px * var(--inv,1)) var(--f-body);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.tok-c img{width:100%;height:100%;object-fit:cover}
+.t-ennemi .tok-c{border-color:#e9a091}
+.t-pnj .tok-c{border-color:#ecd38f}
+.t-figurant .tok-c{border-color:#c9c2b4}
+.tok.me .tok-c{box-shadow:0 0 0 calc(3px * var(--inv,1)) var(--gold),0 2px 6px rgba(0,0,0,.6)}
+.tok.sel .tok-c{box-shadow:0 0 0 calc(4px * var(--inv,1)) var(--gold),0 2px 10px rgba(0,0,0,.6)}
+.tok.hid{opacity:.45}.tok.hid .tok-c{border-style:dashed}
+.tok-n{position:absolute;left:50%;top:100%;transform:translate(-50%,-30%);white-space:nowrap;pointer-events:none;
+  font:600 calc(12px * var(--inv,1)) var(--f-body);color:#fff;background:rgba(0,0,0,.65);padding:calc(1px * var(--inv,1)) calc(6px * var(--inv,1));border-radius:calc(4px * var(--inv,1))}
+.bm-tools{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.bm-tools button{width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:var(--muted)}
+.bm-tools button:hover{color:var(--text);background:var(--panel-2)}
+.bm-tools button.on{background:var(--gold-soft);color:var(--gold)}
+.bm-sep{height:1px;background:var(--line);margin:2px 4px}
+.bm-measure{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--gold);color:var(--text);border-radius:6px;padding:3px 8px;font:600 13px var(--f-body);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bm-panel{position:absolute;top:10px;right:10px;width:min(280px,calc(100% - 70px));max-height:calc(100% - 20px);overflow-y:auto;z-index:10;
+  background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.5);padding:10px 12px;display:grid;grid-auto-rows:max-content;gap:6px;font-size:13px;cursor:default}
+.bm-panel label{color:var(--muted);display:flex;justify-content:space-between}
+.bm-panel input:not([type=checkbox]):not([type=range]):not([type=color]),.bm-panel select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;width:100%;min-width:0}
+.bm-panel input[type=range]{accent-color:var(--gold);width:100%}
+.bm-panel input[type=color]{width:100%;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);padding:2px}
+.bm-panel .bm-check{color:var(--text);justify-content:flex-start;gap:8px;align-items:center}
+.bm-panel .seg{justify-self:start}
+.bm-ph{position:sticky;top:-10px;z-index:1;background:var(--panel);margin:-10px -12px 0;padding:10px 12px 6px;display:flex;align-items:center;justify-content:space-between;font-family:var(--f-display);letter-spacing:.06em}
+.bm-x{border:0;background:transparent;color:var(--muted);font-size:14px}
+.bm-row{display:flex;gap:6px}
+.bm-row .btn{white-space:nowrap}
+.bm-hint{margin:0;color:var(--muted);font-size:12px}
+.bm-del{color:var(--danger);margin-top:4px}
+.bm-panel output{color:var(--text);font-variant-numeric:tabular-nums}
+.who-list{display:grid;gap:8px}
+.bm-panel.bm-maps{width:min(380px,calc(100% - 70px))}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.map-it{position:relative;display:grid;gap:4px}
+.map-th{padding:0;border:2px solid var(--line);border-radius:7px;overflow:hidden;aspect-ratio:4/3;background:var(--well)}
+.map-th img{width:100%;height:100%;object-fit:cover;display:block}
+.map-th:hover{border-color:var(--gold)}
+.map-it.on .map-th{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.bm-panel .map-nm{font-size:12px;padding:3px 6px!important}
+.map-cur{position:absolute;top:4px;left:4px;font:600 9px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:var(--gold);color:var(--on-gold);padding:3px 5px;border-radius:4px}
+.map-del{position:absolute;top:4px;right:4px;min-width:22px;height:22px;border-radius:11px;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:0 6px;opacity:0}
+.map-it:hover .map-del,.map-del:focus-visible,.map-it.confirm .map-del{opacity:1}
+.map-it.confirm .map-del{background:var(--danger)}
+.grid-seg button{display:inline-flex;align-items:center;gap:5px}
+.gc{width:10px;height:10px;border-radius:2px;border:1px solid var(--line)}
+.gc-black{background:#111}.gc-grey{background:#cdcdcd}.gc-white{background:#f6efde}
+.bm-sub{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
+.bm-lib{width:min(320px,calc(100% - 70px))}
+.lib-g{display:grid;gap:6px}
+.lib-gt{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.lib-it{position:relative}
+.lib-place{width:100%;display:grid;justify-items:center;gap:4px;padding:8px 4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+.lib-place:hover{border-color:var(--gold)}
+.lib-c{width:38px;height:38px;border-radius:50%;background:var(--tc);border:2px solid #f3ead8;display:grid;place-items:center;overflow:hidden;color:#fff;font:700 13px var(--f-body);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.lib-c img{width:100%;height:100%;object-fit:cover}
+.lib-c.big{width:84px;height:84px;font-size:26px;border-width:3px}
+.lib-n{font-size:12px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-ed{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:var(--panel);color:var(--muted);font-size:12px;opacity:0}
+.lib-it:hover .lib-ed,.lib-ed:focus-visible{opacity:1}
+.lib-prev{display:grid;place-items:center;padding:6px 0}
+.lib-gt{display:flex;align-items:center;justify-content:space-between}
+.lib-add{border:0;background:transparent;color:var(--gold);font:600 12px var(--f-body);letter-spacing:0;text-transform:none;padding:2px 4px}
+.swatches{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--c);padding:0}
+.sw.on{border-color:var(--text);box-shadow:0 0 0 3px var(--gold-soft)}
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
+.modal-card{width:min(360px,100%);display:grid;gap:10px;background:var(--panel);border:1px solid var(--gold);border-radius:var(--r);padding:22px;text-align:center}
+.modal-card h2{margin:0;font:700 20px var(--f-display);color:var(--gold);letter-spacing:.04em}
+.modal-card p{margin:0;color:var(--muted);font-size:14px}
+.modal-card .btn{padding:9px;text-align:center}
+.btn.who{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:15px;text-align:left}
+.btn.who .dot{width:14px;height:14px;border-radius:50%;flex:none}
+
+/* ================= Thème Parchemin =================
+   Vélin vieilli, encre sépia, accent cire rouge, filets dorés doubles. */
+:root[data-skin="parchemin"]{
+  --ink:#d9c6a0; --panel:#f1e4c6; --panel-2:#e7d5ae; --line:#a88a58;
+  --text:#2c1d0e; --muted:#6f5634; --gold:#8e2b1d; --gold-soft:rgba(142,43,29,.12);
+  --blurple:#4f5a8f; --well:#2a1f14; --code-bg:#dccaa0; --on-gold:#f6ead0; --msg:#3a2a18;
+  --f-display:"IM Fell English SC", "Cinzel", Georgia, serif;
+  --f-body:"Crimson Pro", "Iowan Old Style", Georgia, serif;
+  --r:4px; color-scheme:light;
+}
+[data-skin="parchemin"] body{
+  font-size:16px;
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(90,55,20,.35) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .08  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    #cdb68a;
+}
+/* Cadres façon parchemin : bords irréguliers (filtre #parch-edge), bords brûlés, filet d'encre tremblé */
+[data-skin="parchemin"] .pane,
+[data-skin="parchemin"] .banner,
+[data-skin="parchemin"] .music{
+  position:relative;isolation:isolate;background:transparent;border:0;box-shadow:none;overflow:visible;padding:9px;
+}
+[data-skin="parchemin"] .pane::before,
+[data-skin="parchemin"] .banner::before,
+[data-skin="parchemin"] .music::before{
+  content:"";position:absolute;inset:2px;z-index:-2;pointer-events:none;border-radius:3px;will-change:transform;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='4' seed='3'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .3  0 0 0 0 .12  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse at 50% 45%, #f6ebd0 35%, #ead7ad 75%, #d6bb85 100%);
+  box-shadow:inset 0 0 22px rgba(120,72,22,.45), inset 0 0 4px rgba(90,50,15,.5);
+  filter:url(#parch-edge) drop-shadow(0 3px 4px rgba(50,28,8,.35));
+}
+[data-skin="parchemin"] .pane::after,
+[data-skin="parchemin"] .banner::after,
+[data-skin="parchemin"] .music::after{
+  content:"";position:absolute;inset:7px;z-index:-1;pointer-events:none;border-radius:4px;will-change:transform;
+  border:1.5px solid rgba(110,72,30,.55);
+  filter:url(#parch-ink);
+}
+[data-skin="parchemin"] .pane > *,
+[data-skin="parchemin"] .banner > *,
+[data-skin="parchemin"] .music > *{position:relative}
+[data-skin="parchemin"] .music > .sp-list{position:absolute}
+[data-skin="parchemin"] .pane-b{border-radius:2px;overflow:hidden}
+[data-skin="parchemin"] .banner{gap:0}
+[data-skin="parchemin"] .banner .cell{border-right:1px solid rgba(140,105,60,.35)}
+[data-skin="parchemin"] .pane-h{border-bottom:1px solid rgba(140,105,60,.4);background:transparent}
+[data-skin="parchemin"] .pane-h h2{font:400 15px/1 var(--f-display);letter-spacing:.08em;text-transform:none;color:var(--text)}
+[data-skin="parchemin"] .pane-h h2::before,[data-skin="parchemin"] .pane-h h2::after{content:"❦";color:var(--gold);font-size:12px;margin:0 7px;opacity:.8}
+[data-skin="parchemin"] .pane-h h2::before{display:inline-block;transform:scaleX(-1)}
+[data-skin="parchemin"] .banner .lbl{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:.02em;text-transform:none;color:var(--muted)}
+[data-skin="parchemin"] .banner .val{font-size:19px}
+[data-skin="parchemin"] .banner .cell.lieu .val{font-size:22px;color:var(--gold)}
+[data-skin="parchemin"] .banner .cell.quest{background:linear-gradient(90deg,rgba(142,43,29,.1),transparent 75%)}
+[data-skin="parchemin"] .banner .cell.quest .val{font:italic 500 18px/1.2 var(--f-body)}
+[data-skin="parchemin"] .tag{font:italic 400 12px/1 "IM Fell English", var(--f-body);letter-spacing:0;text-transform:none;background:transparent}
+[data-skin="parchemin"] .tag.ex{color:var(--gold);border-color:rgba(142,43,29,.45)}
+[data-skin="parchemin"] .btn{background:#ead9b3;border-color:var(--line)}
+[data-skin="parchemin"] .btn.primary{background:var(--gold);border-color:#6d1f14;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+[data-skin="parchemin"] .empty b{font-size:21px}
+[data-skin="parchemin"] .scene{box-shadow:inset 0 0 40px rgba(0,0,0,.6)}
+[data-skin="parchemin"] .scene .cap{font-size:21px;color:#f3e6c8}
+[data-skin="parchemin"] .embed{background:rgba(255,248,230,.55);border:1px solid rgba(168,138,88,.5);border-left:4px solid var(--blurple)}
+[data-skin="parchemin"] .msg .who{font-family:var(--f-display);font-weight:400;font-size:16px}
+[data-skin="parchemin"] .av{color:#2c1d0e;box-shadow:0 0 0 1px var(--line)}
+[data-skin="parchemin"] .thumb{border-radius:3px}
+[data-skin="parchemin"] .thumb .n{color:#f3e6c8}
+[data-skin="parchemin"] .settings input,[data-skin="parchemin"] .add input[type=text],[data-skin="parchemin"] .music select{background:rgba(255,248,230,.6)}
+[data-skin="parchemin"] .seg button{background:transparent}
+[data-skin="parchemin"] .crit{color:#2f6b3c}
+[data-skin="parchemin"] .toast{background:var(--panel)}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{height:auto}
+  .main{grid-template-columns:1fr}
+  .col.left{min-height:60vh}
+  .col.right{grid-template-rows:50vh 50vh}
+  .banner{flex-wrap:wrap}
+  .banner .cell{flex:1 1 40%;border-bottom:1px solid var(--line)}
+  .music{grid-template-columns:auto 1fr;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="parch-edge" x="-3%" y="-3%" width="106%" height="106%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035 0.05" numOctaves="4" seed="11" result="t"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="parch-ink" x="-2%" y="-2%" width="104%" height="104%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="4" result="t"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="3"/>
+  </filter>
+</svg>
+<div class="app" id="app">
+
+  <!-- Bandeau d'ambiance -->
+  <header class="banner" id="banner"></header>
+
+  <main class="main">
+    <!-- Colonne gauche : carte (joueurs) ou poste de commande (admin) -->
+    <section class="col left" id="left"></section>
+
+    <!-- Colonne droite : image + Discord -->
+    <section class="col right">
+      <div class="pane">
+        <div class="pane-h"><h2>Scene</h2><span class="sp"></span><span class="tag" id="sceneTag" hidden>Player preview</span></div>
+        <div class="pane-b"><div class="scene" id="scene"></div></div>
+      </div>
+      <div class="pane">
+        <div class="pane-h"><h2 id="chanTitle">Discord</h2><span class="sp"></span><span class="tag" id="feedTag"></span></div>
+        <div class="pane-b"><div class="feed" id="feed"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barre Spotify (admin uniquement) -->
+  <footer class="music" id="music" hidden></footer>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal" hidden></div>
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm">
+    <h1>DM Table</h1>
+    <p>Game Master sign-in only.</p>
+    <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required>
+    <label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Sign in</button>
+    <p class="login-err" id="lgErr" hidden></p>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============ État partagé ============ */
+const SITE_VERSION = '1.7';   // à augmenter à chaque mise à jour
+const KEY = 'table-mj-state-v1';
+const isAdmin = location.hash.replace('#','') === 'admin' || /[?&](code|error)=/.test(location.search) && location.search.includes('state=');  // retour de Spotify
+
+function svgScene(title, a, b, motif){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>
+  <defs><radialGradient id='g' cx='50%' cy='40%' r='75%'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></radialGradient></defs>
+  <rect width='800' height='600' fill='url(#g)'/>${motif}
+  <text x='400' y='560' text-anchor='middle' font-family='Georgia' font-size='20' fill='rgba(255,255,255,.45)' letter-spacing='4'>SAMPLE IMAGE</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const SAMPLE_IMAGES = [
+  {id:'ex1', name:'The Black Boar Tavern', src:svgScene('', '#7a4a22', '#1a0f08',
+    "<rect x='120' y='300' width='560' height='22' fill='#3a2412'/><circle cx='400' cy='170' r='60' fill='#f2b24d' opacity='.55'/><circle cx='400' cy='170' r='26' fill='#ffd78a'/>")},
+  {id:'ex2', name:'Gloommist Forest', src:svgScene('', '#2f4a3a', '#0b1410',
+    "<polygon points='150,520 220,220 290,520' fill='#14261c'/><polygon points='330,520 420,160 510,520' fill='#0f1f16'/><polygon points='540,520 610,250 680,520' fill='#14261c'/><rect y='420' width='800' height='120' fill='#cfd8d0' opacity='.12'/>")},
+  {id:'ex3', name:'Master Aldric, alchemist', src:svgScene('', '#3b3560', '#100e1c',
+    "<circle cx='400' cy='230' r='80' fill='#1c1930'/><path d='M260 520 Q400 300 540 520Z' fill='#1c1930'/><circle cx='520' cy='380' r='22' fill='#6fe0b0' opacity='.7'/>")},
+  {id:'ex4', name:'Ruins of Kar-Dûn', src:svgScene('', '#5a5a6a', '#121218',
+    "<rect x='180' y='240' width='50' height='280' fill='#22222c'/><rect x='300' y='300' width='50' height='220' fill='#22222c'/><rect x='560' y='200' width='50' height='320' fill='#22222c'/><rect x='160' y='220' width='200' height='26' fill='#22222c'/>")}
+];
+
+/* ============ Carte de combat ============
+   Monde = pixels de l'image de la carte. Les jetons sont stockés en coordonnées monde (coin haut-gauche).
+   Vue (zoom/position) propre à chaque écran, jamais synchronisée. */
+const ICONS = {
+  move:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>',
+  ruler: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1.5" transform="rotate(-30 12 12)"/><path d="M7.5 9.6l1.2 2M10.6 7.8l1.7 2.9M13.7 6l1.2 2"/></svg>',
+  fit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  add:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>',
+  map:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>'
+};
+
+function sampleMap(){
+  const W = 1400, H = 980;
+  const room = (x,y,w,h) => `<rect x='${x}' y='${y}' width='${w}' height='${h}' fill='#8a7f6c' stroke='#3b342a' stroke-width='10'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>
+    <rect width='${W}' height='${H}' fill='#2a2620'/>
+    ${room(140,140,420,350)}${room(700,70,560,420)}${room(280,630,840,280)}
+    <rect x='560' y='280' width='140' height='70' fill='#8a7f6c'/><rect x='350' y='490' width='70' height='140' fill='#8a7f6c'/><rect x='980' y='490' width='70' height='140' fill='#8a7f6c'/>
+    <circle cx='980' cy='280' r='45' fill='#3a6b8a' opacity='.85'/>
+    <rect x='770' y='140' width='70' height='70' fill='#5a4a35'/><rect x='420' y='700' width='140' height='70' fill='#5a4a35'/>
+    <text x='${W/2}' y='${H-20}' text-anchor='middle' font-family='Georgia' font-size='22' fill='rgba(255,255,255,.35)' letter-spacing='4'>SAMPLE MAP</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const DEFAULT_CARTE = {
+  src: sampleMap(), path: null, w: 1400, h: 980,
+  cell: 70, offX: 0, offY: 0, grid: true,
+  jetons: [
+    {id:'j1', nom:'Kaelen', type:'pj',     couleur:'#5b8fd6', img:'', taille:1, x:210, y:210, visible:true},
+    {id:'j2', nom:'Mira',   type:'pj',     couleur:'#c76fa8', img:'', taille:1, x:280, y:280, visible:true},
+    {id:'j3', nom:'Thorin', type:'pj',     couleur:'#d69a4a', img:'', taille:1, x:210, y:350, visible:true},
+    {id:'j4', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1, x:910, y:210, visible:true},
+    {id:'j5', nom:'Ogre',   type:'ennemi', couleur:'#7a3a2c', img:'', taille:2, x:1050, y:280, visible:false}
+  ]
+};
+const PLAYER_COLORS = ['#5b8fd6','#c76fa8','#d69a4a','#4fa37a','#8a6fd1','#d0584a','#3fa3b5','#a8a24a'];
+const TYPE_LABEL = {pj:'Player', ennemi:'Enemy', pnj:'NPC', figurant:'Commoner'};
+
+const MAP_VIEWS = {};
+let currentMap = null;
+
+function initials(n){
+  const t = (n||'?').trim(), num = t.match(/\s(\d+)$/);
+  return (t[0] || '?').toUpperCase() + (num ? num[1] : '');   // « Mira » → M, « Goblin 2 » → G2
+}
+/* Fiche joueur (couleur, image) : c'est elle qui habille le jeton du joueur sur la carte */
+function rosterOf(nom){ return (state.joueurs || []).find(j => j.nom === nom); }
+function faceOf(t){
+  if(t.type === 'pj'){ const r = rosterOf(t.nom); if(r) return {couleur:r.couleur, img:r.img || ''}; }
+  return {couleur:t.couleur, img:t.img || ''};
+}
+function snap(v, off, cell){ return off + Math.round((v - off) / cell) * cell; }
+
+function mountMap(host, key, opts){
+  const editable = !!opts.editable;
+  host.innerHTML = `
+    <div class="bm" data-tool="move">
+      <div class="bm-world"><img class="bm-img" alt="" draggable="false"><svg class="bm-grid" xmlns="http://www.w3.org/2000/svg"><defs><pattern patternUnits="userSpaceOnUse"><path fill="none"/></pattern></defs><rect width="100%" height="100%"/></svg><div class="bm-tokens"></div><svg class="bm-ruler" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="bm-tools" role="toolbar" aria-label="Map tools">
+        <button data-tool="move" class="on" title="Move (map and tokens)" aria-label="Move">${ICONS.move}</button>
+        <button data-tool="ruler" title="Ruler: drag to measure" aria-label="Ruler">${ICONS.ruler}</button>
+        <button data-act="fit" title="Fit map to screen" aria-label="Fit to screen">${ICONS.fit}</button>
+        ${editable ? `<span class="bm-sep"></span>
+        <button data-act="add" title="Token library" aria-label="Token library">${ICONS.add}</button>
+        <button data-act="cfg" title="Maps and grid" aria-label="Maps">${ICONS.map}</button>` : ''}
+      </div>
+      <div class="bm-measure" hidden></div>
+      <div class="bm-panel" data-panel="cfg" hidden></div>
+      <div class="bm-panel" data-panel="tok" hidden></div>
+      <div class="bm-panel bm-lib" data-panel="lib" hidden></div>
+    </div>`;
+  const root = host.querySelector('.bm'), world = root.querySelector('.bm-world'),
+        img = root.querySelector('.bm-img'), grid = root.querySelector('.bm-grid'),
+        layer = root.querySelector('.bm-tokens'), ruler = root.querySelector('.bm-ruler'),
+        measure = root.querySelector('.bm-measure'),
+        pCfg = root.querySelector('[data-panel=cfg]'), pTok = root.querySelector('[data-panel=tok]'), pLib = root.querySelector('[data-panel=lib]');
+  let view = MAP_VIEWS[key] || null, tool = 'move', dragging = null, selected = null, loadedSrc = null;
+  const C = () => state.carte;
+
+  function apply(){
+    if(!view) return;
+    world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; MAP_VIEWS[key] = view;
+    root.style.setProperty('--inv', 1/view.s);
+    styleGrid();                                                            // trait du quadrillage à épaisseur constante à l'écran
+    root.classList.toggle('far', C().cell * view.s < 34);                   // noms masqués quand les jetons sont minuscules
+  }
+  function fit(){
+    const r = root.getBoundingClientRect(), c = C();
+    if(!r.width || !c.w) return;
+    const s = Math.min(r.width / c.w, r.height / c.h) * 0.96;
+    view = {s, x:(r.width - c.w*s)/2, y:(r.height - c.h*s)/2}; apply();
+  }
+  function toWorld(cx, cy){ const r = root.getBoundingClientRect(); return {x:(cx - r.left - view.x)/view.s, y:(cy - r.top - view.y)/view.s}; }
+
+  function canMove(t){ return editable || (t.type === 'pj' && t.nom === opts.me); }
+
+  const GRID_COLORS = {black:'rgba(0,0,0,.6)', grey:'rgba(205,205,205,.7)', white:'rgba(246,239,222,.8)'};
+  function styleGrid(){
+    const c = C(), path = grid.querySelector('path'); if(!path || !c) return;
+    const k = view ? 1 / view.s : 1, w = (c.gridWeight === 'thick' ? 2.5 : 1) * k;
+    path.setAttribute('stroke', GRID_COLORS[c.gridColor] || GRID_COLORS.black);
+    path.setAttribute('stroke-width', w);
+    path.setAttribute('stroke-dasharray', c.gridStyle === 'dashed' ? `${c.cell / 8} ${c.cell / 12}` : 'none');
+  }
+  function renderGrid(){
+    const c = C();
+    world.style.width = c.w + 'px'; world.style.height = c.h + 'px';
+    grid.style.display = c.grid ? '' : 'none';
+    grid.setAttribute('width', c.w); grid.setAttribute('height', c.h);
+    const pat = grid.querySelector('pattern'), pid = 'g' + key;
+    pat.id = pid; pat.setAttribute('width', c.cell); pat.setAttribute('height', c.cell);
+    pat.setAttribute('patternTransform', `translate(${c.offX} ${c.offY})`);
+    pat.querySelector('path').setAttribute('d', `M0,0 H${c.cell} M0,0 V${c.cell}`);
+    grid.querySelector('rect').setAttribute('fill', `url(#${pid})`);
+    styleGrid();
+    ruler.setAttribute('viewBox', `0 0 ${c.w} ${c.h}`); ruler.setAttribute('width', c.w); ruler.setAttribute('height', c.h);
+  }
+  function renderTokens(){
+    const c = C();
+    const list = c.jetons.filter(t => editable || t.visible !== false);
+    const keep = new Set(list.map(t => t.id));
+    layer.querySelectorAll('.tok').forEach(el => { if(!keep.has(el.dataset.id)) el.remove(); });
+    list.forEach(t => {
+      let el = layer.querySelector(`.tok[data-id="${CSS.escape(t.id)}"]`);
+      if(!el){ el = document.createElement('div'); el.className = 'tok'; el.dataset.id = t.id; layer.appendChild(el); }
+      if(dragging && dragging.id === t.id) return;           // ne pas contrarier le glisser en cours
+      const size = c.cell * (t.taille || 1);
+      const f = faceOf(t);
+      el.style.cssText = `left:${t.x}px;top:${t.y}px;width:${size}px;height:${size}px;--tc:${f.couleur || '#888'}`;
+      el.className = `tok t-${t.type}${t.visible === false ? ' hid' : ''}${canMove(t) ? ' mov' : ''}${selected === t.id ? ' sel' : ''}${t.type==='pj' && t.nom===opts.me ? ' me' : ''}`;
+      el.innerHTML = `<div class="tok-c">${f.img ? `<img src="${esc(f.img)}" alt="" draggable="false">` : `<span>${esc(initials(t.nom))}</span>`}</div><div class="tok-n">${esc(t.nom)}</div>`;
+    });
+  }
+  function render(){
+    const c = C();
+    if(loadedSrc !== c.src){
+      if(loadedSrc !== null){ view = null; MAP_VIEWS[key] = null; }   // nouvelle carte : recadrer
+      loadedSrc = c.src;
+      img.onload = () => {
+        const nw = img.naturalWidth || c.w, nh = img.naturalHeight || c.h;
+        if(editable && (nw !== c.w || nh !== c.h)){ c.w = nw; c.h = nh; const m = (state.cartesBiblio || []).find(x => x.id === c.mapId); if(m){ m.w = nw; m.h = nh; } save(); }
+        renderGrid(); if(!view) fit();
+      };
+      img.src = c.src;
+    }
+    renderGrid(); renderTokens();
+    if(!view) requestAnimationFrame(fit); else apply();
+  }
+
+  /* ---- Pointeur : glisser jeton, panoramique, règle, pincement ---- */
+  const pts = new Map(); let pan = null, pinch = null, rulerStart = null, lastLive = 0;
+  root.addEventListener('pointerdown', e => {
+    if(e.target.closest('.bm-tools,.bm-panel')) return;
+    root.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size === 2){ // pincement
+      const [a,b] = [...pts.values()];
+      pinch = {d: Math.hypot(a.x-b.x, a.y-b.y), s: view.s, cx:(a.x+b.x)/2, cy:(a.y+b.y)/2};
+      dragging = null; pan = null; rulerStart = null; return;
+    }
+    const tokEl = e.target.closest('.tok');
+    if(tool === 'ruler'){
+      const w = toWorld(e.clientX, e.clientY), c = C();
+      rulerStart = {x: snap(w.x - c.cell/2, c.offX, c.cell) + c.cell/2, y: snap(w.y - c.cell/2, c.offY, c.cell) + c.cell/2};
+      return;
+    }
+    if(tokEl){
+      const t = C().jetons.find(j => j.id === tokEl.dataset.id);
+      if(t && canMove(t)){
+        const w = toWorld(e.clientX, e.clientY);
+        dragging = {id:t.id, el:tokEl, dx:w.x - t.x, dy:w.y - t.y, sx:e.clientX, sy:e.clientY, moved:false};
+        tokEl.classList.add('drag'); return;
+      }
+    }
+    pan = {x:e.clientX, y:e.clientY, vx:view.x, vy:view.y, moved:false};
+  });
+  root.addEventListener('pointermove', e => {
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pinch && pts.size === 2){
+      const [a,b] = [...pts.values()], d = Math.hypot(a.x-b.x, a.y-b.y);
+      zoomAt(pinch.cx, pinch.cy, (pinch.s * d / pinch.d) / view.s); return;
+    }
+    if(rulerStart){
+      const w = toWorld(e.clientX, e.clientY), c = C();
+      const end = {x: snap(w.x - c.cell/2, c.offX, c.cell) + c.cell/2, y: snap(w.y - c.cell/2, c.offY, c.cell) + c.cell/2};
+      const n = Math.max(Math.abs(end.x - rulerStart.x), Math.abs(end.y - rulerStart.y)) / c.cell;
+      const sw = 4 / view.s;
+      ruler.innerHTML = `<line x1="${rulerStart.x}" y1="${rulerStart.y}" x2="${end.x}" y2="${end.y}" stroke="var(--gold)" stroke-width="${sw}" stroke-dasharray="${sw*3} ${sw*2}" stroke-linecap="round"/>
+        <circle cx="${rulerStart.x}" cy="${rulerStart.y}" r="${sw*2}" fill="var(--gold)"/><circle cx="${end.x}" cy="${end.y}" r="${sw*2}" fill="var(--gold)"/>`;
+      measure.hidden = false;
+      measure.textContent = `${Math.round(n)} square${Math.round(n)>1?'s':''} · ${Math.round(n)*5} ft`;
+      const r = root.getBoundingClientRect();
+      measure.style.left = (e.clientX - r.left + 14) + 'px'; measure.style.top = (e.clientY - r.top + 14) + 'px';
+      return;
+    }
+    if(dragging){
+      if(Math.hypot(e.clientX - dragging.sx, e.clientY - dragging.sy) > 4) dragging.moved = true;
+      const w = toWorld(e.clientX, e.clientY);
+      const x = w.x - dragging.dx, y = w.y - dragging.dy;
+      dragging.el.style.left = x + 'px'; dragging.el.style.top = y + 'px';
+      const now = performance.now();
+      if(now - lastLive > 90){ lastLive = now; opts.onLive && opts.onLive(dragging.id, x, y); }
+      return;
+    }
+    if(pan){
+      if(Math.hypot(e.clientX - pan.x, e.clientY - pan.y) > 4) pan.moved = true;
+      view.x = pan.vx + (e.clientX - pan.x); view.y = pan.vy + (e.clientY - pan.y); apply();
+    }
+  });
+  function endPointer(e){
+    if(!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if(pinch){ if(pts.size < 2) pinch = null; return; }
+    if(rulerStart){ rulerStart = null; ruler.innerHTML = ''; measure.hidden = true; return; }
+    if(dragging){
+      const d = dragging; dragging = null; d.el.classList.remove('drag');
+      const t = C().jetons.find(j => j.id === d.id);
+      if(t){
+        if(d.moved){
+          const c = C(), w = toWorld(e.clientX, e.clientY);
+          t.x = snap(w.x - d.dx, c.offX, c.cell); t.y = snap(w.y - d.dy, c.offY, c.cell);
+          opts.onMove && opts.onMove(t);
+        } else if(editable){ select(t.id); }
+      }
+      renderTokens(); return;
+    }
+    if(pan && !pan.moved && editable && selected){ select(null); }
+    pan = null;
+  }
+  root.addEventListener('pointerup', endPointer);
+  root.addEventListener('pointercancel', endPointer);
+
+  function zoomAt(cx, cy, k){
+    const r = root.getBoundingClientRect(), s = Math.min(6, Math.max(0.08, view.s * k)); k = s / view.s;
+    view.x = (cx - r.left) - ((cx - r.left) - view.x) * k;
+    view.y = (cy - r.top)  - ((cy - r.top)  - view.y) * k;
+    view.s = s; apply();
+  }
+  root.addEventListener('wheel', e => { if(e.target.closest('.bm-panel,.bm-tools')) return;   // les panneaux défilent normalement
+    e.preventDefault(); if(view) zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, {passive:false});
+
+  /* ---- Barre d'outils ---- */
+  root.querySelector('.bm-tools').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.tool){
+      tool = b.dataset.tool; root.dataset.tool = tool;
+      root.querySelectorAll('button[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === tool));
+    }
+    if(b.dataset.act === 'fit') fit();
+    if(b.dataset.act === 'add') toggleLib();
+    if(b.dataset.act === 'cfg') toggleCfg();
+  });
+
+  /* ---- MJ : ajout et édition de jetons ---- */
+  /* Bibliothèque de jetons (modèles réutilisables, réservée au MJ) */
+  const LIB = () => (state.jetonsBiblio = state.jetonsBiblio || []);
+  function tokFace(t){ return t.img ? `<img src="${esc(t.img)}" alt="">` : `<span>${esc(initials(t.nom))}</span>`; }
+  function toggleLib(force){
+    const open = force !== undefined ? force : pLib.hidden;
+    pCfg.hidden = true; pTok.hidden = true; selected = null; renderTokens();
+    pLib.hidden = !open; if(open) renderLib();
+  }
+  function renderLib(){
+    const item = (t, place, edit) => `
+        <div class="lib-it"><button class="lib-place" data-${place}="${esc(t.id)}" title="Place ${esc(t.nom)} on the map">
+          <span class="lib-c" style="--tc:${esc(t.couleur)}">${tokFace(t)}</span><span class="lib-n">${esc(t.nom)}</span></button>
+          <button class="lib-ed" data-${edit}="${esc(t.id)}" aria-label="Edit ${esc(t.nom)}">✎</button></div>`;
+    const players = state.joueurs || [];
+    const groups = [['ennemi','Enemies'], ['pnj','NPCs'], ['figurant','Commoners']].map(([k,l]) => {
+      const items = LIB().filter(t => t.type === k);
+      return items.length ? `<div class="lib-g"><div class="lib-gt">${l}</div><div class="lib-grid">${items.map(t => item(t,'place','edit')).join('')}</div></div>` : '';
+    }).join('');
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>Token library</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <p class="bm-hint">Click a token to place it on the map.</p>
+      <div class="lib-g" id="libPlayers"><div class="lib-gt">Players <button class="lib-add" id="plNew">+ Add player</button></div>
+        <p class="bm-hint">This list is what players see on the “Who are you?” screen.</p>
+        <div class="lib-grid">${players.map(t => item(t,'pplace','pedit')).join('') || '<p class="bm-hint">No players yet.</p>'}</div></div>
+      ${groups}
+      <button class="btn primary" id="libNew">+ New enemy, NPC or commoner</button>`;
+    pLib.querySelector('.bm-x').onclick = () => toggleLib(false);
+    pLib.querySelector('#libNew').onclick = () => editModel(null);
+    pLib.querySelector('#plNew').onclick = () => editPlayer(null);
+    pLib.querySelectorAll('[data-place]').forEach(b => b.onclick = () => placeModel(b.dataset.place));
+    pLib.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editModel(b.dataset.edit));
+    pLib.querySelectorAll('[data-pplace]').forEach(b => b.onclick = () => placePlayer(b.dataset.pplace));
+    pLib.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => editPlayer(b.dataset.pedit));
+  }
+  function placePlayer(id){
+    const r = (state.joueurs || []).find(j => j.id === id); if(!r) return;
+    if(C().jetons.some(t => t.type === 'pj' && t.nom === r.nom)) return toast(r.nom + ' is already on the map');
+    const c = C(), rc = root.getBoundingClientRect(), w = toWorld(rc.left + rc.width/2, rc.top + rc.height/2);
+    const spot = freeSpot(c, snap(w.x - c.cell/2, c.offX, c.cell), snap(w.y - c.cell/2, c.offY, c.cell));
+    c.jetons.push({id:'t'+Date.now().toString(36), nom:r.nom, type:'pj', couleur:r.couleur, img:'', taille:1, x:spot.x, y:spot.y, visible:true});
+    save(); renderTokens(); toast(r.nom + ' placed on the map');
+  }
+  function editPlayer(id){
+    const list = (state.joueurs = state.joueurs || []);
+    const r = id ? list.find(j => j.id === id) : {nom:'', couleur:PLAYER_COLORS[list.length % PLAYER_COLORS.length], img:''};
+    if(!r) return;
+    const d = Object.assign({}, r), oldName = r.nom;
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>${id ? 'Edit player' : 'New player'}</b><button class="bm-x" aria-label="Back">✕</button></div>
+      <div class="lib-prev"><span class="lib-c big" id="pdPrev" style="--tc:${esc(d.couleur)}">${tokFace(d)}</span></div>
+      <label for="pdNom">Character name</label><input id="pdNom" value="${esc(d.nom)}" placeholder="e.g. Kaelen">
+      <label for="pdCol">Color</label><input id="pdCol" type="color" value="${esc(d.couleur)}">
+      <label for="pdImg">Picture</label>
+      <div class="bm-row"><input id="pdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="pdFile">Upload</label><input id="pdFile" type="file" accept="image/*" hidden></div>
+      <button class="btn" id="pdNoImg" ${d.img ? '' : 'hidden'}>Remove picture (back to initial)</button>
+      <p class="bm-hint">Players can also pick their own color and picture from the player view.</p>
+      <div class="bm-row"><button class="btn primary" id="pdSave">Save</button>${id ? '<button class="btn bm-del" id="pdDel">Delete player</button>' : ''}</div>`;
+    const prev = () => { const el = pLib.querySelector('#pdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); pLib.querySelector('#pdNoImg').hidden = !d.img; };
+    pLib.querySelector('.bm-x').onclick = renderLib;
+    pLib.querySelector('#pdNom').oninput = e => { d.nom = e.target.value; prev(); };
+    pLib.querySelector('#pdCol').oninput = e => { d.couleur = e.target.value; prev(); };
+    pLib.querySelector('#pdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
+    pLib.querySelector('#pdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
+    pLib.querySelector('#pdNoImg').onclick = () => { d.img = ''; pLib.querySelector('#pdImg').value = ''; prev(); };
+    pLib.querySelector('#pdSave').onclick = () => {
+      d.nom = d.nom.trim();
+      if(!d.nom) return toast('Give the player a name.');
+      if(list.some(j => j.nom === d.nom && j.id !== id)) return toast('Another player already has that name.');
+      if(id){
+        Object.assign(r, d);
+        if(oldName !== d.nom) C().jetons.forEach(t => { if(t.type === 'pj' && t.nom === oldName) t.nom = d.nom; });
+      } else list.push(Object.assign(d, {id:'p'+Date.now().toString(36)}));
+      save(); renderTokens(); renderLib(); toast('Player saved');
+    };
+    const del = pLib.querySelector('#pdDel');
+    if(del) del.onclick = () => {
+      state.joueurs = list.filter(j => j.id !== id);
+      C().jetons = C().jetons.filter(t => !(t.type === 'pj' && t.nom === oldName));
+      save(); renderTokens(); renderLib(); toast(oldName + ' removed');
+    };
+    setTimeout(() => pLib.querySelector('#pdNom').focus(), 30);
+  }
+  function freeSpot(c, x, y){
+    // décale vers la droite puis la ligne suivante tant que la case est occupée
+    for(let i = 0; i < 40; i++){
+      const tx = x + (i % 6) * c.cell, ty = y + Math.floor(i / 6) * c.cell;
+      if(!c.jetons.some(j => j.x === tx && j.y === ty)) return {x:tx, y:ty};
+    }
+    return {x, y};
+  }
+  function uniqueName(base, type){
+    if(type === 'pj') return base;
+    const names = new Set(C().jetons.map(j => j.nom));
+    if(!names.has(base)) return base;
+    let n = 2; while(names.has(base + ' ' + n)) n++;
+    return base + ' ' + n;
+  }
+  function placeModel(id){
+    const m = LIB().find(t => t.id === id); if(!m) return;
+    const c = C(), r = root.getBoundingClientRect(), w = toWorld(r.left + r.width/2, r.top + r.height/2);
+    const spot = freeSpot(c, snap(w.x - c.cell/2, c.offX, c.cell), snap(w.y - c.cell/2, c.offY, c.cell));
+    const t = {id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,4), nom:uniqueName(m.nom, m.type),
+               type:m.type, couleur:m.couleur, img:m.img || '', taille:m.taille || 1, x:spot.x, y:spot.y, visible: m.type !== 'ennemi' || m.visible !== false};
+    c.jetons.push(t); save(); renderTokens(); toast(t.nom + ' placed on the map');
+  }
+  function editModel(id){
+    const m = id ? LIB().find(t => t.id === id) : {nom:'', type:'ennemi', couleur:'#b84a3c', img:'', taille:1};
+    if(!m) return;
+    const d = Object.assign({}, m);
+    pLib.innerHTML = `
+      <div class="bm-ph"><b>${id ? 'Edit template' : 'New template'}</b><button class="bm-x" aria-label="Back">✕</button></div>
+      <div class="lib-prev"><span class="lib-c big" id="mdPrev" style="--tc:${esc(d.couleur)}">${tokFace(d)}</span></div>
+      <label for="mdNom">Name</label><input id="mdNom" value="${esc(d.nom)}" placeholder="e.g. Goblin, City guard…">
+      <label for="mdType">Type</label>
+      <select id="mdType">${Object.entries(TYPE_LABEL).filter(([k]) => k !== 'pj').map(([k,l]) => `<option value="${k}" ${d.type===k?'selected':''}>${l}</option>`).join('')}</select>
+      <label>Size</label>
+      <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(d.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
+      <label for="mdCol">Color</label><input id="mdCol" type="color" value="${esc(d.couleur)}">
+      <label for="mdImg">Image</label>
+      <div class="bm-row"><input id="mdImg" placeholder="Image link (optional)" value="${esc(d.img && !d.img.startsWith('data:') ? d.img : '')}"><label class="btn" for="mdFile">Upload</label><input id="mdFile" type="file" accept="image/*" hidden></div>
+      <div class="bm-row"><button class="btn primary" id="mdSave">Save</button>${id ? '<button class="btn bm-del" id="mdDel">Delete</button>' : ''}</div>`;
+    const prev = () => { const el = pLib.querySelector('#mdPrev'); el.style.setProperty('--tc', d.couleur); el.innerHTML = tokFace(d); };
+    pLib.querySelector('.bm-x').onclick = renderLib;
+    pLib.querySelector('#mdNom').oninput = e => { d.nom = e.target.value; prev(); };
+    pLib.querySelector('#mdType').onchange = e => { d.type = e.target.value; d.couleur = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[d.type]; pLib.querySelector('#mdCol').value = d.couleur; prev(); };
+    pLib.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { d.taille = +b.dataset.sz; pLib.querySelectorAll('[data-sz]').forEach(x => x.classList.toggle('on', x===b)); });
+    pLib.querySelector('#mdCol').oninput = e => { d.couleur = e.target.value; prev(); };
+    pLib.querySelector('#mdImg').onchange = e => { d.img = e.target.value.trim(); prev(); };
+    pLib.querySelector('#mdFile').onchange = async e => { const f = e.target.files[0]; if(!f) return; const url = await storeImage(f); if(url){ d.img = url; prev(); } };
+    pLib.querySelector('#mdSave').onclick = () => {
+      if(!d.nom.trim()) return toast('Give the template a name.');
+      d.nom = d.nom.trim();
+      if(id) Object.assign(m, d); else LIB().push(Object.assign(d, {id:'m'+Date.now().toString(36)}));
+      save(); renderLib(); toast('Template saved');
+    };
+    const del = pLib.querySelector('#mdDel');
+    if(del) del.onclick = () => { state.jetonsBiblio = LIB().filter(t => t.id !== id); save(); renderLib(); };
+    setTimeout(() => pLib.querySelector('#mdNom').focus(), 30);
+  }
+  function select(id){
+    selected = id; renderTokens();
+    const t = id && C().jetons.find(j => j.id === id);
+    pCfg.hidden = true; pLib.hidden = true;
+    if(!t){ pTok.hidden = true; return; }
+    pTok.hidden = false;
+    pTok.innerHTML = `
+      <div class="bm-ph"><b>Token</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <label for="tkNom">Name</label><input id="tkNom" value="${esc(t.nom)}">
+      <label for="tkType">Type</label>
+      <select id="tkType">${Object.entries(TYPE_LABEL).map(([k,l]) => `<option value="${k}" ${t.type===k?'selected':''}>${l}</option>`).join('')}</select>
+      <p class="bm-hint" ${t.type==='pj'?'':'hidden'}>The player who picks this name can move this token.</p>
+      <label>Size</label>
+      <div class="seg">${[1,2,3].map(n => `<button data-sz="${n}" class="${(t.taille||1)===n?'on':''}">${n}×${n}</button>`).join('')}</div>
+      ${t.type === 'pj' ? `<p class="bm-hint">This player's color and picture are set in the token library (Players).</p>` : `
+      <label for="tkCol">Color</label><input id="tkCol" type="color" value="${esc(t.couleur || '#888888')}">`}
+      ${t.type === 'pj' ? '' : `<label for="tkImg">Image</label>
+      <div class="bm-row"><input id="tkImg" placeholder="Image link (optional)" value="${esc(t.img && !t.img.startsWith('data:') ? t.img : '')}"><label class="btn" for="tkFile">Upload</label><input id="tkFile" type="file" accept="image/*" hidden></div>`}
+      <label class="bm-check"><input id="tkVis" type="checkbox" ${t.visible!==false?'checked':''}> Visible to players</label>
+      <div class="bm-row">${t.type === 'pj' ? '' : '<button class="btn" id="tkLib">Add to library</button>'}<button class="btn bm-del" id="tkDel">${t.type === 'pj' ? 'Remove from map' : 'Delete'}</button></div>`;
+    const upd = patch => { Object.assign(t, patch); save(); renderTokens(); };
+    pTok.querySelector('.bm-x').onclick = () => select(null);
+    pTok.querySelector('#tkNom').oninput = e => upd({nom:e.target.value});
+    pTok.querySelector('#tkType').onchange = e => {
+      const type = e.target.value, col = {pj:'#5b8fd6', ennemi:'#b84a3c', pnj:'#c9a13f', figurant:'#8a8578'}[type];
+      upd({type, couleur:col}); select(t.id);
+    };
+    pTok.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { upd({taille:+b.dataset.sz}); select(t.id); });
+    const on = (sel, ev, fn) => { const el = pTok.querySelector(sel); if(el) el[ev] = fn; };
+    on('#tkCol', 'oninput', e => upd({couleur:e.target.value}));
+    on('#tkImg', 'onchange', e => upd({img:e.target.value.trim()}));
+    on('#tkFile', 'onchange', async e => {
+      const f = e.target.files[0]; if(!f) return;
+      const url = await storeImage(f); if(url){ upd({img:url}); select(t.id); }
+    });
+    pTok.querySelector('#tkVis').onchange = e => upd({visible:e.target.checked});
+    pTok.querySelector('#tkDel').onclick = () => { C().jetons = C().jetons.filter(j => j.id !== t.id); save(); select(null); };
+    on('#tkLib', 'onclick', () => {
+      const base = t.nom.replace(/\s+\d+$/, '');
+      LIB().push({id:'m'+Date.now().toString(36), nom:base, type:t.type, couleur:t.couleur, img:t.img || '', taille:t.taille || 1});
+      save(); toast(base + ' added to the library');
+    });
+  }
+  /* Bibliothèque de cartes (privée) : chaque carte garde son quadrillage et ses jetons */
+  const MAPS = () => (state.cartesBiblio = state.cartesBiblio || []);
+  const GRID_KEYS = ['src','path','w','h','cell','offX','offY','grid','gridColor','gridStyle','gridWeight'];
+  function ensureMapLib(){
+    const c = C();
+    if(!c.mapId || !MAPS().some(m => m.id === c.mapId)){
+      const id = c.mapId || 'map' + Date.now().toString(36);
+      c.mapId = id;
+      MAPS().unshift(Object.assign({id, nom: c.src && c.src.startsWith('data:') ? 'Sample map' : 'Current map'}, pickKeys(c, GRID_KEYS)));
+    }
+  }
+  function pickKeys(o, ks){ const r = {}; ks.forEach(k => { if(o[k] !== undefined) r[k] = o[k]; }); return r; }
+  function storeCurrentMap(){
+    const c = C(), m = MAPS().find(x => x.id === c.mapId);
+    if(m){ Object.assign(m, pickKeys(c, GRID_KEYS)); m.jetons = structuredClone(c.jetons); }
+  }
+  function switchMap(id){
+    ensureMapLib();
+    if(C().mapId === id) return;
+    storeCurrentMap();
+    const m = MAPS().find(x => x.id === id); if(!m) return;
+    let jetons = m.jetons ? structuredClone(m.jetons) : null;
+    if(!jetons){
+      // première visite : les personnages joueurs sont posés en ligne en haut à gauche
+      const cell = m.cell || 70, ox = m.offX || 0, oy = m.offY || 0;
+      jetons = C().jetons.filter(t => t.type === 'pj').map((t, i) => Object.assign({}, t, {x: ox + cell * (1 + i), y: oy + cell}));
+    }
+    state.carte = Object.assign({cell:70, offX:0, offY:0, grid:true}, pickKeys(m, GRID_KEYS), {mapId:id, jetons});
+    selected = null; save(); render(); toggleCfg(true);
+    toast('Map: ' + m.nom);
+  }
+  async function addMap(src, nom, path){
+    ensureMapLib(); storeCurrentMap();
+    const id = 'map' + Date.now().toString(36);
+    MAPS().push({id, nom, src, path:path || null, w:0, h:0, cell:70, offX:0, offY:0, grid:true, cat:catNewItem('map')});
+    save(); switchMap(id);
+  }
+  function toggleCfg(keepOpen){
+    pTok.hidden = true; pLib.hidden = true; selected = null; renderTokens();
+    if(!pCfg.hidden && keepOpen !== true){ pCfg.hidden = true; return; }
+    ensureMapLib();
+    const c = C();
+    pCfg.hidden = false;
+    pCfg.classList.add('bm-maps');
+    pCfg.innerHTML = `
+      <div class="bm-ph"><b>Maps</b><button class="bm-x" aria-label="Close">✕</button></div>
+      <p class="bm-hint">Click a map to show it to everyone. Each map keeps its own grid and token positions.</p>
+      ${catBarHTML('map', MAPS())}
+      <div class="map-grid">${catFilter('map', MAPS()).map(m => `
+        <div class="map-it ${m.id === c.mapId ? 'on' : ''}">
+          <button class="map-th" data-map="${esc(m.id)}" title="Show ${esc(m.nom)}" draggable="true" data-dragid="${esc(m.id)}"><img src="${esc(m.src)}" alt="" loading="lazy" draggable="false"></button>
+          <input class="map-nm" data-ren="${esc(m.id)}" value="${esc(m.nom)}" aria-label="Map name">
+          ${catSelectHTML('map', m)}
+          ${m.id === c.mapId ? '<span class="map-cur">On screen</span>' : `<button class="map-del" data-del="${esc(m.id)}" aria-label="Delete ${esc(m.nom)}">✕</button>`}
+        </div>`).join('') || '<p class="bm-hint">No map in this category yet. Upload one, or drag a map onto the category.</p>'}</div>
+      <div class="bm-row"><label class="btn primary" for="mpFile">+ Upload maps</label><input id="mpFile" type="file" accept="image/*" multiple hidden>
+        <input id="mpUrl" placeholder="…or paste an image link"></div>
+      <div class="bm-sub">Grid for this map</div>
+      <label class="bm-check"><input id="mpGrid" type="checkbox" ${c.grid?'checked':''}> Show grid</label>
+      <label>Color</label>
+      <div class="seg grid-seg" data-opt="gridColor">${[['black','Black'],['grey','Light grey'],['white','Off-white']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridColor||'black')===v?'on':''}"><span class="gc gc-${v}"></span>${l}</button>`).join('')}</div>
+      <label>Lines</label>
+      <div class="seg grid-seg" data-opt="gridStyle">${[['solid','Solid'],['dashed','Dashed']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridStyle||'solid')===v?'on':''}">${l}</button>`).join('')}</div>
+      <label>Thickness</label>
+      <div class="seg grid-seg" data-opt="gridWeight">${[['normal','Normal'],['thick','Thick']].map(([v,l]) => `<button data-v="${v}" class="${(c.gridWeight||'normal')===v?'on':''}">${l}</button>`).join('')}</div>
+      <label for="mpCell">Square size <output id="mpCellO">${c.cell} px</output></label><input id="mpCell" type="range" min="16" max="300" value="${c.cell}">
+      <label for="mpOx">Horizontal offset <output id="mpOxO">${c.offX} px</output></label><input id="mpOx" type="range" min="0" max="${c.cell}" value="${c.offX}">
+      <label for="mpOy">Vertical offset <output id="mpOyO">${c.offY} px</output></label><input id="mpOy" type="range" min="0" max="${c.cell}" value="${c.offY}">
+      <p class="bm-hint">Line the squares up with the ones drawn on the image. 1 square = 5 ft.</p>`;
+    const upd = patch => { Object.assign(c, patch); storeCurrentMap(); save(); renderGrid(); renderTokens(); };
+    pCfg.querySelector('.bm-x').onclick = () => { pCfg.hidden = true; };
+    catBind(pCfg, 'map', MAPS, () => toggleCfg(true));
+    pCfg.querySelectorAll('[data-map]').forEach(b => b.onclick = () => switchMap(b.dataset.map));
+    pCfg.querySelectorAll('[data-ren]').forEach(i => i.onchange = e => {
+      const m = MAPS().find(x => x.id === i.dataset.ren); if(!m) return;
+      m.nom = e.target.value.trim() || m.nom; save();
+    });
+    pCfg.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const m = MAPS().find(x => x.id === b.dataset.del); if(!m) return;
+      const it = b.closest('.map-it');
+      if(!it.classList.contains('confirm')){ it.classList.add('confirm'); b.textContent = 'Delete?'; setTimeout(() => { it.classList.remove('confirm'); b.textContent = '✕'; }, 3000); return; }
+      state.cartesBiblio = MAPS().filter(x => x.id !== m.id);
+      const mpath = m.path || ((m.src || '').match(/\/object\/public\/scenes\/(.+)$/) || [])[1];
+      if(sb && mpath) sb.storage.from('scenes').remove([decodeURIComponent(mpath)]);
+      save(); toggleCfg(true); toast(m.nom + ' deleted');
+    });
+    pCfg.querySelector('#mpUrl').onchange = e => {
+      const v = e.target.value.trim(); if(!v) return;
+      addMap(v, decodeURIComponent(v.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ') || 'New map');
+    };
+    pCfg.querySelector('#mpFile').onchange = async e => {
+      const files = [...e.target.files]; if(!files.length) return;
+      let last = null;
+      for(const f of files){
+        const url = await storeImage(f); if(!url) continue;
+        ensureMapLib(); storeCurrentMap();
+        last = {id:'map' + Date.now().toString(36) + Math.random().toString(36).slice(2,4), nom:f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' '), src:url, w:0, h:0, cell:70, offX:0, offY:0, grid:true, cat:catNewItem('map')};
+        MAPS().push(last);
+      }
+      save();
+      if(last){ switchMap(last.id); toast(files.length > 1 ? files.length + ' maps added' : 'Map added'); }
+    };
+    pCfg.querySelector('#mpGrid').onchange = e => upd({grid:e.target.checked});
+    pCfg.querySelectorAll('.grid-seg').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => {
+      g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      upd({[g.dataset.opt]: b.dataset.v});
+    }));
+    pCfg.querySelector('#mpCell').oninput = e => {
+      const v = +e.target.value; pCfg.querySelector('#mpCellO').textContent = v + ' px';
+      pCfg.querySelector('#mpOx').max = v; pCfg.querySelector('#mpOy').max = v; upd({cell:v});
+    };
+    pCfg.querySelector('#mpOx').oninput = e => { pCfg.querySelector('#mpOxO').textContent = e.target.value + ' px'; upd({offX:+e.target.value}); };
+    pCfg.querySelector('#mpOy').oninput = e => { pCfg.querySelector('#mpOyO').textContent = e.target.value + ' px'; upd({offY:+e.target.value}); };
+  }
+
+  new ResizeObserver(() => { if(!MAP_VIEWS[key]) fit(); }).observe(root);
+  render();
+  return {
+    refresh(){ render(); },
+    openPlayers(){ toggleLib(true); const g = pLib.querySelector('#libPlayers'); g && g.scrollIntoView({block:'start'}); },
+    fit(){ requestAnimationFrame(fit); },
+    moveToken(id, x, y){
+      if(dragging && dragging.id === id) return;
+      const el = layer.querySelector(`.tok[data-id="${CSS.escape(id)}"]`);
+      if(el){ el.style.left = x + 'px'; el.style.top = y + 'px'; }
+    }
+  };
+}
+
+/* Enregistre une image (carte ou jeton) : Supabase si en ligne, sinon intégrée au navigateur */
+async function storeImage(f){
+  if(!sb){ return await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); }); }
+  toast('Uploading ' + f.name + '…');
+  const path = Date.now() + '-' + f.name.normalize('NFD').replace(/[^\w.-]+/g,'_');
+  const { error } = await sb.storage.from('scenes').upload(path, f, {contentType: f.type, upsert:false});
+  if(error){ toast('Upload failed: ' + error.message); return null; }
+  return sb.storage.from('scenes').getPublicUrl(path).data.publicUrl;
+}
+
+const DEFAULT = {
+  carte: structuredClone(DEFAULT_CARTE),
+  notesUrl:'',
+  discord:{url:'', guild:'', channel:'', label:'game-table'},
+  images: SAMPLE_IMAGES,
+  current:'ex1',
+  ambiance:{lieu:'Valbrune', jour:'3rd of Flamerule', heure:'Dusk', meteo:'Light rain', objectif:"Find Master Aldric's missing apprentice"},
+  music:{playlistId:''},
+  spotifyClientId:'',
+  cartesBiblio:[],
+  imageCats:[],
+  mapCats:[],
+  split:'both',
+  skin:'nuit',
+  codeJoueurs:'',
+  jetonsBiblio:[
+    {id:'m1', nom:'Goblin', type:'ennemi', couleur:'#b84a3c', img:'', taille:1},
+    {id:'m2', nom:'Wolf', type:'ennemi', couleur:'#6b6f78', img:'', taille:1},
+    {id:'m3', nom:'Guard', type:'pnj', couleur:'#c9a13f', img:'', taille:1},
+    {id:'m6', nom:'Villager', type:'figurant', couleur:'#8a8578', img:'', taille:1},
+    {id:'m4', nom:'Ogre', type:'ennemi', couleur:'#7a3a2c', img:'', taille:2}
+  ],
+  joueurs:[
+    {id:'p1', nom:'Kaelen', couleur:'#5b8fd6', img:''},
+    {id:'p2', nom:'Mira',   couleur:'#c76fa8', img:''},
+    {id:'p3', nom:'Thorin', couleur:'#d69a4a', img:''}
+  ]
+};
+
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) return Object.assign(structuredClone(DEFAULT), s); }catch(e){}
+  return structuredClone(DEFAULT);
+}
+let state = load();
+let bc = null; try{ bc = new BroadcastChannel('table-mj'); }catch(e){}
+
+/* ---- Synchronisation : Supabase si configuré, sinon entre onglets du même navigateur ---- */
+const CFG = window.TABLE_CONFIG || {};
+const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase)
+  ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {
+      // connexion MJ valable pour cet onglet seulement : fermer l'onglet = déconnexion (F5 garde la session)
+      auth:{storage:window.sessionStorage, persistSession:true, autoRefreshToken:true}
+    }) : null;
+// anciennes versions : la connexion MJ était mémorisée durablement, on l'efface
+try{ Object.keys(localStorage).filter(k => /^sb-.*-auth-token$/.test(k)).forEach(k => localStorage.removeItem(k)); }catch(e){}
+const PUBLIC_KEYS  = ['carte','images','current','ambiance','skin','discord','joueurs']; // visibles par les joueurs
+const PRIVATE_KEYS = ['notesUrl','split','music','codeJoueurs','jetonsBiblio','spotifyClientId','cartesBiblio','imageCats','mapCats'];                                   // réservés au MJ
+const pick = (o, keys) => Object.fromEntries(keys.map(k => [k, o[k]]));
+let session = null, pushTimer = null;
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  if(sb){
+    if(!session) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, 250);   // regroupe les frappes rapides
+    setSync('pending');
+  } else {
+    bc && bc.postMessage(state);
+  }
+}
+async function push(){
+  const now = new Date().toISOString();
+  const [a, b] = await Promise.all([
+    sb.from('etat').update({data: pick(state, PUBLIC_KEYS), updated_at: now}).eq('id','public'),
+    sb.from('etat').update({data: pick(state, PRIVATE_KEYS), updated_at: now}).eq('id','prive')
+  ]);
+  if(a.error || b.error){ setSync('error'); toast('Synchronisation impossible : ' + (a.error||b.error).message); }
+  else setSync('ok');
+  broadcast();
+}
+/* Diffusion en direct aux joueurs, sur un canal dont le nom dépend du code joueurs */
+let liveCh = null, liveCode = null, liveReady = false;
+function ensureLive(){
+  const code = state.codeJoueurs || '';
+  if(code === liveCode) return;
+  if(liveCh) sb.removeChannel(liveCh);
+  liveCh = null; liveReady = false; liveCode = code;
+  if(!code) return;
+  liveCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}});
+  liveCh.on('broadcast', {event:'jeton'}, m => applyJeton(m.payload));
+  liveCh.on('broadcast', {event:'joueur'}, m => { applyJoueur(m.payload); });
+  liveCh.subscribe(st => { liveReady = (st === 'SUBSCRIBED'); if(liveReady) broadcast(); });
+}
+function broadcast(){
+  if(!sb || !isAdmin) return;
+  ensureLive();
+  if(liveCh && liveReady) liveCh.send({type:'broadcast', event:'etat', payload: pick(state, PUBLIC_KEYS)});
+}
+function setSync(st){
+  const el = document.getElementById('syncTag'); if(!el) return;
+  const map = {ok:['Online · synced','ok'], pending:['Saving…',''], error:['Offline · not synced','err'], local:['Local mode (not published)','']};
+  const [txt, cls] = map[st] || map.local;
+  el.textContent = txt; el.className = 'tag sync ' + cls;
+}
+function receive(s){
+  state = Object.assign(structuredClone(DEFAULT), state, s);
+  for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);
+  renderShared();
+  currentMap && currentMap.refresh();
+}
+/* Déplacements de jetons en direct (joueurs ↔ MJ) */
+let playerCh = null, me = '', playerCode = '';
+function sendJeton(id, x, y, fin){
+  const ch = isAdmin ? (liveReady ? liveCh : null) : playerCh;
+  ch && ch.send({type:'broadcast', event:'jeton', payload:{id, x, y, fin:!!fin}});
+}
+function applyJeton(p){
+  const t = state.carte && state.carte.jetons.find(j => j.id === p.id); if(!t) return;
+  if(p.img !== undefined){ t.img = p.img; currentMap && currentMap.refresh(); return; }
+  t.x = p.x; t.y = p.y;
+  currentMap && currentMap.moveToken(p.id, p.x, p.y);
+}
+bc && (bc.onmessage = e => receive(e.data));
+addEventListener('storage', e => { if(e.key===KEY && e.newValue){ try{ receive(JSON.parse(e.newValue)); }catch(_){} } });
+addEventListener('hashchange', () => location.reload());
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
+
+/* ============ Bandeau ============ */
+const FIELDS = [['lieu','Location'],['jour','Date'],['heure','Time'],['meteo','Weather'],['objectif','Current quest']];
+function renderBanner(){
+  const a = state.ambiance;
+  $('#banner').innerHTML = FIELDS.map(([k,l]) => {
+    const cls = k==='objectif' ? 'quest' : k;
+    const v = isAdmin
+      ? `<input class="val" id="amb-${k}" value="${esc(a[k])}" placeholder="${l}…">`
+      : `<div class="val">${esc(a[k]) || '—'}</div>`;
+    return `<div class="cell ${cls}"><div class="lbl">${l}</div>${v}</div>`;
+  }).join('');
+  if(isAdmin){
+    FIELDS.forEach(([k]) => $('#amb-'+k).addEventListener('input', e => { state.ambiance[k]=e.target.value; save(); }));
+  }
+}
+
+/* ============ Scène ============ */
+function renderScene(){
+  const img = state.images.find(i => i.id===state.current);
+  $('#scene').innerHTML = img
+    ? `<img src="${esc(img.src)}" alt="${esc(img.name)}"><div class="cap">${esc(img.name)}</div>`
+    : `<div class="empty"><div><b>No image</b>The GM hasn't shown anything yet.</div></div>`;
+  $('#sceneTag').hidden = !isAdmin;
+}
+
+/* ============ Discord (exemple Avrae) ============ */
+const FEED = [
+  {who:'Kaelen', c:'#9fc3e8', when:'20:41', txt:'I attack the goblin with my longsword'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:41', embed:{t:'Kaelen attacks with a Longsword!', lines:[
+    ['To hit','<code>1d20 (17) + 5</code> = <b>22</b>'],['Damage','<code>1d8 (6) + 3</code> = <b>9</b> slashing'],['Goblin 2','<b>&lt;-2/7 HP&gt;</b> Unconscious']]}},
+  {who:'Mira', c:'#e0a3c3', when:'20:42', txt:'!cast "shield of faith" -t Kaelen'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:42', embed:{t:'Mira casts Shield of Faith!', lines:[
+    ['Effect','Kaelen gains +2 AC (concentration, 10 min)'],['Spell slots','Lvl 1: ◉◉◯◯']]}},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:43', embed:{t:'Initiative · Round 2', lines:[
+    ['Current','<b>Goblin 1</b> &lt;7/7 HP&gt;'],['Next','Thorin (14)'],['Then','Mira (11), Kaelen (9)']]}},
+  {who:'Thorin', c:'#e8c39f', when:'20:44', txt:'!check perception'},
+  {who:'Avrae', bot:true, c:'#7d86e8', when:'20:44', embed:{t:'Thorin makes a Perception check!', lines:[
+    ['Result','<code>1d20 (<span class="crit">20</span>) + 4</code> = <b>24</b>']]}}
+];
+function renderSampleFeed(){
+  $('#feed').innerHTML = FEED.map(m => `
+    <div class="msg"><div class="av" style="background:${m.c}">${m.who[0]}</div><div style="min-width:0">
+      <div class="who">${esc(m.who)}${m.bot?'<span class="bot">BOT</span>':''}<span class="when">${m.when}</span></div>
+      ${m.txt?`<div class="txt">${esc(m.txt)}</div>`:''}
+      ${m.embed?`<div class="embed"><div class="t">${esc(m.embed.t)}</div><div class="f">${m.embed.lines.map(([k,v])=>`<div><span class="k">${k}</span>${v}</div>`).join('')}</div></div>`:''}
+    </div></div>`).join('');
+  const f=$('#feed'); f.scrollTop=f.scrollHeight;
+}
+
+/* ============ Discord en direct ============ */
+let feedTimer = null, feedSig = '', feedBusy = false;
+function feedTag(text, cls){ const t = $('#feedTag'); if(t){ t.textContent = text; t.className = 'tag ' + (cls || ''); } }
+function feedEmpty(title, text){
+  feedSig = '';
+  $('#feed').innerHTML = `<div class="empty"><div><b>${esc(title)}</b>${esc(text)}</div></div>`;
+}
+function renderFeed(){
+  if(!sb){ feedTag('Sample · offline', 'ex'); renderSampleFeed(); return; }
+  if(!feedTimer){
+    pollFeed();
+    feedTimer = setInterval(() => { if(!document.hidden) pollFeed(); }, 4000);
+  }
+}
+async function pollFeed(){
+  if(feedBusy) return; feedBusy = true;
+  try{
+    const headers = {};
+    let url = '/api/discord';
+    if(isAdmin){
+      const ses = (await sb.auth.getSession()).data.session;
+      if(ses) headers.Authorization = 'Bearer ' + ses.access_token;
+    } else url += '?code=' + encodeURIComponent(playerCode);
+    const r = await fetch(url, {headers});
+    if(r.status === 404 && !(r.headers.get('content-type') || '').includes('json')){
+      feedTag('Not set up', ''); feedEmpty('Discord bot not set up yet', isAdmin ? 'Add the bot file to the site to show your channel here.' : 'Your GM is still setting this up.'); return;
+    }
+    const data = await r.json().catch(() => ({}));
+    if(data.error){
+      feedTag(data.error === 'rate_limited' ? 'Live · slowing down' : 'Not connected', data.error === 'rate_limited' ? '' : 'err');
+      if(data.error !== 'rate_limited') feedEmpty('Discord unavailable', isAdmin ? data.message : 'Your GM needs to check the Discord settings.');
+      return;
+    }
+    if(!data.channel && !(data.messages || []).length && !(state.discord && state.discord.channel)){
+      feedTag('No channel', ''); feedEmpty('No channel chosen', isAdmin ? 'Paste a channel link in ⚙ Settings.' : 'Your GM hasn\'t picked a channel yet.'); return;
+    }
+    feedTag('Live', 'ok');
+    if(data.channel && !(state.discord && state.discord.label)) $('#chanTitle').textContent = '#' + data.channel;
+    const sig = JSON.stringify(data.messages);
+    if(sig === feedSig) return;
+    feedSig = sig;
+    const f = $('#feed'), atBottom = f.scrollHeight - f.scrollTop - f.clientHeight < 60;
+    f.innerHTML = data.messages.length ? data.messages.map(renderMsg).join('') : '<div class="empty"><div><b>No messages yet</b>Messages posted in the channel will appear here.</div></div>';
+    if(atBottom || !f.dataset.init){ f.scrollTop = f.scrollHeight; f.dataset.init = '1'; }
+  }catch(e){
+    feedTag('Offline', 'err');
+  }finally{ feedBusy = false; }
+}
+/* Mise en forme Discord (gras, italique, code, mentions, émojis, liens) */
+function md(text, mentions){
+  if(!text) return '';
+  const keep = [];
+  let t = esc(text);
+  t = t.replace(/```(?:\w+\n)?([\s\S]*?)```/g, (_, c) => { keep.push(`<pre>${c.replace(/^\n|\n$/g,'')}</pre>`); return `\u0000${keep.length-1}\u0000`; });
+  t = t.replace(/`([^`\n]+)`/g, (_, c) => { keep.push(`<code>${c}</code>`); return `\u0000${keep.length-1}\u0000`; });
+  t = t.replace(/&lt;@!?(\d+)&gt;/g, (_, id) => { const u = (mentions || []).find(m => m.id === id); return `<span class="ment">@${esc(u ? u.name : 'someone')}</span>`; });
+  t = t.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_, an, n, id) => `<img class="emo" alt=":${n}:" src="https://cdn.discordapp.com/emojis/${id}.${an ? 'gif' : 'png'}?size=32">`);
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  t = t.replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<u>$1</u>')
+       .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<i>$2</i>').replace(/(^|\W)_(?!\s)(.+?)_(?=\W|$)/g, '$1<i>$2</i>').replace(/~~(.+?)~~/g, '<s>$1</s>');
+  t = t.replace(/^#{1,3} (.+)$/gm, '<b>$1</b>').replace(/^&gt; (.*)$/gm, '<span class="quote">$1</span>');
+  t = t.replace(/\n/g, '<br>');
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => keep[+i]);
+}
+function renderMsg(m){
+  const when = new Date(m.at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const embeds = (m.embeds || []).map(e => `
+    <div class="embed" style="${e.color ? 'border-left-color:' + esc(e.color) : ''}">
+      ${e.thumbnail ? `<img class="e-th" src="${esc(e.thumbnail)}" alt="">` : ''}
+      ${e.author ? `<div class="e-au">${esc(e.author)}</div>` : ''}
+      ${e.title ? `<div class="t">${md(e.title, m.mentions)}</div>` : ''}
+      ${e.description ? `<div class="e-de">${md(e.description, m.mentions)}</div>` : ''}
+      ${e.fields.length ? `<div class="f">${e.fields.map(f => `<div class="${f.inline ? '' : 'full'}"><span class="k">${md(f.name, m.mentions)}</span>${md(f.value, m.mentions)}</div>`).join('')}</div>` : ''}
+      ${e.image ? `<img class="e-im" src="${esc(e.image)}" alt="">` : ''}
+      ${e.footer ? `<div class="e-fo">${esc(e.footer)}</div>` : ''}
+    </div>`).join('');
+  return `<div class="msg"><img class="av" src="${esc(m.avatar)}" alt="" onerror="this.style.visibility='hidden'"><div style="min-width:0">
+    <div class="who">${esc(m.author)}${m.bot ? '<span class="bot">BOT</span>' : ''}<span class="when">${when}</span></div>
+    ${m.content ? `<div class="txt">${md(m.content, m.mentions)}</div>` : ''}
+    ${(m.images || []).map(u => `<img class="e-im" src="${esc(u)}" alt="">`).join('')}
+    ${embeds}
+  </div></div>`;
+}
+
+/* ============ Colonne gauche ============ */
+function renderLeft(){
+  const left = $('#left');
+  if(!isAdmin){
+    left.innerHTML = `<div class="pane"><div class="pane-h"><h2>Map</h2><span class="sp"></span>
+      ${sb ? `<span class="tag">${me && me!=='-' ? 'Playing as ' + esc(me) : 'Spectator'}</span>${me && me!=='-' ? '<button class="btn" id="myTok">My token</button>' : ''}<button class="btn" id="chgId">Change</button>` : ''}</div>
+      <div class="pane-b" id="mapHost"></div></div>`;
+    const ci = $('#chgId'); if(ci) ci.onclick = () => { try{ sessionStorage.removeItem('table-mj-joueur'); }catch(e){} location.reload(); };
+    const mt = $('#myTok'); if(mt) mt.onclick = () => openMyToken();
+    currentMap = mountMap($('#mapHost'), 'table', {
+      editable:false, me,
+      onLive:(id,x,y) => sendJeton(id,x,y),
+      onMove:t => {
+        sendJeton(t.id, t.x, t.y, true);
+        if(sb) sb.rpc('deplacer_jeton', {code:playerCode, joueur:me, jeton:t.id, x:t.x, y:t.y})
+          .then(({data, error}) => {
+            if(error) toast('Move not saved: ' + (/function|schema cache/i.test(error.message || '') ? 'the server is missing the token-move setup. Tell your GM.' : (error.message || 'server error.')));
+            else if(data === false) toast("Move not saved: this isn't your token.");
+          });
+        else save();
+      }
+    });
+    return;
+  }
+  left.classList.add('console');
+  left.innerHTML = `
+    <div class="pane">
+      <div class="pane-h"><h2>Image library</h2><span class="sp"></span><span class="tag sync" id="syncTag"></span>
+        <button class="btn" id="setBtn" aria-expanded="${settingsOpen}" aria-controls="setPop">⚙ Settings</button>
+        <button class="btn" id="playersBtn">Players</button>
+        <a class="btn" href="#table" target="_blank" rel="noopener">Player view ↗</a></div>
+      <div id="libWrap"><div id="libCats"></div><div class="lib" id="lib"></div></div>
+      <div class="add">
+        <input type="text" id="imgUrl" placeholder="Paste an image link (https://…)">
+        <button class="btn primary" id="addUrl">Add</button>
+        <label class="btn" for="imgFile">Upload from computer</label>
+        <input type="file" id="imgFile" accept="image/*" multiple hidden>
+      </div>
+    </div>
+    <div class="pop" id="setPop" ${settingsOpen?'':'hidden'}>
+      <div class="settings">
+        <label>Theme</label><div class="seg" role="group" aria-label="Theme" style="justify-self:start">
+          <button data-skin="nuit" class="${state.skin!=='parchemin'?'on':''}">Night</button>
+          <button data-skin="parchemin" class="${state.skin==='parchemin'?'on':''}">Parchment</button></div>
+        <label for="capInput">Caption</label><input id="capInput" class="cap-in" placeholder="Select an image">
+        <label for="notesUrl">Notes (Drive)</label><input id="notesUrl" placeholder="Link to a Google Doc or a .txt / .pdf file on Drive" value="${esc(state.notesUrl)}">
+        <label for="codeJ">Player code</label><div class="dc-row"><input id="codeJ" class="dc-label" placeholder="e.g. red-dragon" value="${esc(state.codeJoueurs)}" autocomplete="off"><span class="code-hint">${state.codeJoueurs ? 'Share this with your players' : 'Player view locked until a code is set'}</span></div>
+        <label for="spId">Spotify Client ID</label><input id="spId" placeholder="From developer.spotify.com > your app > Settings" value="${esc(state.spotifyClientId)}" autocomplete="off">
+        <label for="dcUrl">Discord channel</label><div class="dc-row"><input id="dcUrl" placeholder="Channel link: https://discord.com/channels/…" value="${esc(state.discord.url)}"><input id="dcLabel" class="dc-label" placeholder="Display name" value="${esc(state.discord.label)}"></div>
+      </div>
+      <div class="pop-foot"><span class="ver">Site version ${SITE_VERSION}</span>${sb ? `<button class="btn" id="logoutBtn">Sign out</button>` : ''}</div>
+    </div>
+    <div class="pane">
+      <div class="pane-h"><h2>Map & notes</h2><span class="sp"></span>
+        <div class="seg" role="group" aria-label="Layout">
+          <button data-split="map" class="${state.split==='map'?'on':''}">Map</button>
+          <button data-split="both" class="${state.split==='both'?'on':''}">Both</button>
+          <button data-split="notes" class="${state.split==='notes'?'on':''}">Notes</button>
+        </div>
+        ${state.notesUrl?`<a class="btn" href="${esc(state.notesUrl)}" target="_blank" rel="noopener" title="Open to edit">Notes ↗</a>`:''}</div>
+      <div class="pane-b split" data-mode="${state.split}">
+        <div class="half" id="miniMap"></div>
+        <div class="half reader" id="notes">${state.notesUrl
+          ? `<iframe class="fill" src="${esc(driveReader(state.notesUrl))}" title="Session notes"></iframe>`
+          : `<div class="empty"><div><b>No notes linked</b>Paste your Drive document link in ⚙ Settings.</div></div>`}</div>
+      </div>
+    </div>`;
+  currentMap = mountMap($('#miniMap'), 'admin', {
+    editable:true,
+    onLive:(id,x,y) => sendJeton(id,x,y),
+    onMove:t => { sendJeton(t.id, t.x, t.y, true); save(); }
+  });
+  renderLib();
+  $('#addUrl').onclick = () => {
+    const url = $('#imgUrl').value.trim(); if(!url) return toast('Paste an image link first.');
+    const name = decodeURIComponent(url.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ') || 'Nouvelle image';
+    addImage(name, url);
+    $('#imgUrl').value='';
+  };
+  $('#imgFile').onchange = e => {
+    [...e.target.files].forEach(f => uploadImage(f));
+    e.target.value='';
+  };
+  $('#notesUrl').onchange = e => { state.notesUrl=e.target.value.trim(); save(); renderLeft(); };
+  const lo = $('#logoutBtn'); if(lo) lo.onclick = async () => {
+    clearTimeout(pushTimer); if(pushTimer) await push();   // envoie les derniers changements
+    await sb.auth.signOut(); location.reload();
+  };
+  $('#playersBtn').onclick = () => {
+    if(state.split === 'notes'){ state.split = 'both'; save(); renderLeft(); }
+    currentMap && currentMap.openPlayers();
+  };
+  $('#setBtn').onclick = e => { e.stopPropagation(); toggleSettings(!settingsOpen); };
+  $('#dcUrl').onchange = e => {
+    const url = e.target.value.trim();
+    const m = url.match(/channels\/(\d+|@me)\/(\d+)/);
+    if(url && !m){ toast('Link not recognized: right-click the channel > Copy Link'); return; }
+    state.discord = Object.assign(state.discord, {url, guild:m?m[1]:'', channel:m?m[2]:''});
+    save(); renderChannel(); toast(url ? 'Discord channel saved' : 'Discord channel removed');
+  };
+  $('#codeJ').onchange = e => {
+    state.codeJoueurs = e.target.value.trim();
+    save(); renderLeft();
+    toast(state.codeJoueurs ? 'Player code: ' + state.codeJoueurs : 'Player view locked (no code)');
+  };
+  $('#spId').onchange = e => {
+    const v = e.target.value.trim();
+    if(v === (state.spotifyClientId || '')) return;
+    state.spotifyClientId = v; save();
+    sp.tok = null; spStore(); renderMusic();
+    toast(v ? 'Spotify Client ID saved' : 'Spotify Client ID removed');
+  };
+  $('#dcLabel').oninput = e => { state.discord.label = e.target.value.replace(/^#/,''); save(); renderChannel(); };
+
+  document.querySelectorAll('[data-split]').forEach(b => b.onclick = () => {
+    state.split = b.dataset.split; save();
+    document.querySelector('.split').dataset.mode = state.split;
+    currentMap && currentMap.fit();                       // recadre la carte sur sa nouvelle taille
+    document.querySelectorAll('[data-split]').forEach(x => x.classList.toggle('on', x===b));
+  });
+  document.querySelectorAll('button[data-skin]').forEach(b => b.onclick = () => {
+    state.skin = b.dataset.skin; save(); applySkin();
+    document.querySelectorAll('button[data-skin]').forEach(x => x.classList.toggle('on', x===b));
+  });
+  $('#capInput').oninput = e => {
+    const img = state.images.find(i => i.id===state.current); if(!img) return;
+    img.name = e.target.value; save(); renderScene();
+    const n = document.querySelector('.thumb.on .n'); if(n) n.textContent = img.name;
+  };
+}
+async function uploadImage(f){
+  const name = f.name.replace(/\.[^.]+$/,'');
+  if(!sb){ const r=new FileReader(); r.onload=()=>addImage(name, r.result); r.readAsDataURL(f); return; }
+  toast('Uploading ' + name + '…');
+  const path = Date.now() + '-' + f.name.normalize('NFD').replace(/[^\w.-]+/g,'_');
+  const { error } = await sb.storage.from('scenes').upload(path, f, {contentType: f.type, upsert:false});
+  if(error) return toast('Upload failed: ' + error.message);
+  const { data } = sb.storage.from('scenes').getPublicUrl(path);
+  addImage(name, data.publicUrl, path);
+}
+/* Notes en lecture seule : Google Doc ou fichier du Drive (.txt, .pdf…) affiché en mode aperçu, sans menus */
+function driveReader(url){
+  let m = url.match(/docs\.google\.com\/document\/d\/([\w-]+)/);
+  if(m) return `https://docs.google.com/document/d/${m[1]}/preview`;
+  m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || url.match(/drive\.google\.com\/(?:open|uc)\?(?:.*&)?id=([\w-]+)/);
+  if(m) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  return url;
+}
+/* Fenêtre de réglages : s'ouvre au bouton, se ferme en cliquant ailleurs ou avec Échap */
+let settingsOpen = false;
+function toggleSettings(open){
+  if(!open && document.activeElement && $('#setPop').contains(document.activeElement)) document.activeElement.blur(); // valide le champ en cours
+  settingsOpen = open;
+  const pop = $('#setPop'); if(pop) pop.hidden = !open;
+  const b = $('#setBtn'); if(b) b.setAttribute('aria-expanded', open);
+}
+document.addEventListener('mousedown', e => {
+  if(!settingsOpen) return;
+  const pop = $('#setPop'), btn = $('#setBtn');
+  if(pop && !pop.contains(e.target) && !(btn && btn.contains(e.target))) toggleSettings(false);
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && settingsOpen) toggleSettings(false); });
+/* ============ Catégories (bibliothèques d'images et de cartes) ============ */
+const CAT_FILTER = {scene:'all', map:'all'};            // filtre propre à cet écran
+const CAT_KEY = {scene:'imageCats', map:'mapCats'};
+function catList(kind){ return (state[CAT_KEY[kind]] = state[CAT_KEY[kind]] || []); }
+function catNewItem(kind){ const f = CAT_FILTER[kind]; return f !== 'all' && f !== '' && catList(kind).some(c => c.id === f) ? f : ''; }
+function catFilter(kind, items){
+  const f = CAT_FILTER[kind];
+  if(f === 'all') return items;
+  if(f === '') return items.filter(i => !i.cat || !catList(kind).some(c => c.id === i.cat));
+  return items.filter(i => i.cat === f);
+}
+function catBarHTML(kind, items){
+  const cats = catList(kind), f = CAT_FILTER[kind];
+  if(f !== 'all' && f !== '' && !cats.some(c => c.id === f)) CAT_FILTER[kind] = 'all';
+  const count = id => items.filter(i => id === '' ? (!i.cat || !cats.some(c => c.id === i.cat)) : i.cat === id).length;
+  const unc = count('');
+  const chip = (id, label, n, custom) => `<span class="cat-chip ${CAT_FILTER[kind] === id ? 'on' : ''}" data-cat="${esc(id)}" ${id !== 'all' ? 'data-drop="1"' : ''}>
+      <button class="cat-b" data-pick="${esc(id)}">${esc(label)}<span class="cat-n">${n}</span></button>${custom && CAT_FILTER[kind] === id ? `<button class="cat-ed" data-catren="${esc(id)}" title="Rename" aria-label="Rename ${esc(label)}">✎</button><button class="cat-ed" data-delcat="${esc(id)}" title="Delete category" aria-label="Delete ${esc(label)}">✕</button>` : ''}</span>`;
+  return `<div class="cat-bar" data-kind="${kind}">
+    ${chip('all', 'All', items.length)}
+    ${cats.map(c => chip(c.id, c.nom, count(c.id), true)).join('')}
+    ${cats.length && unc ? chip('', 'Uncategorized', unc) : ''}
+    <button class="cat-add" data-addcat="1">+ Category</button>
+  </div>`;
+}
+function catSelectHTML(kind, item){
+  const cats = catList(kind);
+  if(!cats.length) return '';
+  return `<select class="cat-sel" data-catfor="${esc(item.id)}" aria-label="Category of ${esc(item.name || item.nom || '')}">
+    <option value="">Uncategorized</option>${cats.map(c => `<option value="${esc(c.id)}" ${item.cat === c.id ? 'selected' : ''}>${esc(c.nom)}</option>`).join('')}</select>`;
+}
+/* Branche la barre et les menus : getItems() → éléments, rerender() → redessine */
+function catBind(root, kind, getItems, rerender){
+  const bar = root.querySelector(`.cat-bar[data-kind="${kind}"]`); if(!bar) return;
+  const setCat = (id, cat) => { const it = getItems().find(i => i.id === id); if(it){ it.cat = cat; save(); rerender(); } };
+  bar.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { CAT_FILTER[kind] = b.dataset.pick; rerender(); });
+  const inline = (el, value, done) => {
+    const inp = document.createElement('input'); inp.className = 'cat-in'; inp.value = value; inp.placeholder = 'Category name';
+    el.replaceWith(inp); inp.focus(); inp.select();
+    let fin = false;
+    const end = ok => { if(fin) return; fin = true; done(ok ? inp.value.trim() : null); };
+    inp.onkeydown = e => { if(e.key === 'Enter') end(true); if(e.key === 'Escape') end(false); };
+    inp.onblur = () => end(true);
+  };
+  bar.querySelector('[data-addcat]').onclick = e => inline(e.currentTarget, '', name => {
+    if(name){ const c = {id:'c' + Date.now().toString(36), nom:name}; catList(kind).push(c); CAT_FILTER[kind] = c.id; save(); }
+    rerender();
+  });
+  bar.querySelectorAll('[data-catren]').forEach(b => b.onclick = e => {
+    const c = catList(kind).find(x => x.id === b.dataset.catren); if(!c) return;
+    inline(e.currentTarget.closest('.cat-chip'), c.nom, name => { if(name){ c.nom = name; save(); } rerender(); });
+  });
+  bar.querySelectorAll('[data-delcat]').forEach(b => b.onclick = () => {
+    if(b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Delete?'; b.classList.add('warn'); setTimeout(() => { b.dataset.sure = ''; b.textContent = '✕'; b.classList.remove('warn'); }, 3000); return; }
+    const id = b.dataset.delcat;
+    state[CAT_KEY[kind]] = catList(kind).filter(c => c.id !== id);
+    getItems().forEach(i => { if(i.cat === id) i.cat = ''; });
+    CAT_FILTER[kind] = 'all'; save(); rerender(); toast('Category deleted · its items are now uncategorized');
+  });
+  // glisser une vignette sur une catégorie pour l'y ranger
+  bar.querySelectorAll('[data-drop]').forEach(ch => {
+    ch.ondragover = e => { if(e.dataTransfer.types.includes('text/x-gm-' + kind)){ e.preventDefault(); ch.classList.add('over'); } };
+    ch.ondragleave = () => ch.classList.remove('over');
+    ch.ondrop = e => { e.preventDefault(); ch.classList.remove('over'); const id = e.dataTransfer.getData('text/x-gm-' + kind); if(id) setCat(id, ch.dataset.cat); };
+  });
+  root.querySelectorAll('[draggable][data-dragid]').forEach(el => el.ondragstart = e => { e.dataTransfer.setData('text/x-gm-' + kind, el.dataset.dragid); e.dataTransfer.effectAllowed = 'move'; });
+  root.querySelectorAll('.cat-sel[data-catfor]').forEach(sel => { sel.onclick = e => e.stopPropagation(); sel.onchange = () => setCat(sel.dataset.catfor, sel.value); });
+}
+
+function addImage(name, src, path){
+  const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  const cat = catNewItem('scene');
+  state.images.push(Object.assign({id,name,src,cat}, path ? {path} : {})); save(); renderLib(); toast('Image added: '+name);
+}
+function renderLib(){
+  const cur = state.images.find(i => i.id===state.current), ci = $('#capInput');
+  if(ci){ ci.value = cur ? cur.name : ''; ci.disabled = !cur; }
+  const bar = $('#libCats'); if(bar){ bar.innerHTML = catBarHTML('scene', state.images); }
+  const shown = catFilter('scene', state.images);
+  const lib = $('#lib'), keepX = lib.scrollLeft;
+  if(!lib.dataset.wheel){   // molette verticale → défilement horizontal
+    lib.dataset.wheel = '1';
+    lib.addEventListener('wheel', e => { if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){ lib.scrollLeft += e.deltaY; e.preventDefault(); } }, {passive:false});
+  }
+  $('#lib').innerHTML = shown.map(i => `
+    <div class="sc-it"><button class="thumb ${i.id===state.current?'on':''}" data-id="${i.id}" title="Show to players" draggable="true" data-dragid="${i.id}">
+      <img src="${esc(i.src)}" alt="" draggable="false"><span class="n">${esc(i.name)}</span>
+      <span class="x" data-del="${i.id}" role="button" aria-label="Delete">✕</span></button>${catSelectHTML('scene', i)}</div>`).join('')
+    || `<p style="color:var(--muted);margin:0">${state.images.length ? 'No image in this category yet. Upload one, or drag an image onto the category.' : 'Library is empty.'}</p>`;
+  lib.scrollLeft = keepX;
+  catBind($('#libWrap'), 'scene', () => state.images, renderLib);
+  $('#lib').querySelectorAll('.thumb').forEach(b => b.onclick = e => {
+    const del = e.target.dataset.del;
+    if(del){
+      const img = state.images.find(i=>i.id===del);
+      if(sb && img && img.path) sb.storage.from('scenes').remove([img.path]);
+      state.images = state.images.filter(i=>i.id!==del); if(state.current===del) state.current=null;
+    }
+    else { state.current = b.dataset.id===state.current ? null : b.dataset.id; }
+    save(); renderLib(); renderScene();
+  });
+}
+
+/* ============ Spotify (vue MJ uniquement) ============
+   Connexion « Authorization Code + PKCE » : aucun secret, tout se passe dans le navigateur du MJ.
+   Le son sort de l'appareil Spotify du MJ (ordinateur, téléphone…), le site ne fait que le piloter. */
+const SP_KEY = 'table-mj-spotify';
+const SP_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+const SP_REDIRECT = location.origin + '/';
+const sp = { tok:null, playlists:[], tracks:{}, player:null, devices:[], timer:null, err:'', busy:false, listOpen:false, filter:'' };
+
+function spLoad(){ try{ sp.tok = JSON.parse(localStorage.getItem(SP_KEY) || 'null'); }catch(e){ sp.tok = null; } }
+function spStore(){ try{ sp.tok ? localStorage.setItem(SP_KEY, JSON.stringify(sp.tok)) : localStorage.removeItem(SP_KEY); }catch(e){} }
+function b64url(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+
+async function spLogin(){
+  const clientId = (state.spotifyClientId || '').trim();
+  if(!clientId){ toast('Paste your Spotify Client ID in ⚙ Settings first.'); return; }
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  const st = b64url(crypto.getRandomValues(new Uint8Array(12)));
+  try{ localStorage.setItem(SP_KEY + '-pkce', JSON.stringify({verifier, clientId, state:st})); }catch(e){}
+  const q = new URLSearchParams({response_type:'code', client_id:clientId, scope:SP_SCOPES, redirect_uri:SP_REDIRECT,
+    code_challenge_method:'S256', code_challenge:challenge, state:st});
+  location.href = 'https://accounts.spotify.com/authorize?' + q;
+}
+/* Retour de Spotify : https://table-mj.vercel.app/?code=…&state=… */
+async function spHandleReturn(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return;
+  let p = null; try{ p = JSON.parse(localStorage.getItem(SP_KEY + '-pkce') || 'null'); localStorage.removeItem(SP_KEY + '-pkce'); }catch(e){}
+  history.replaceState(null, '', '/#admin');
+  if(q.has('error')){ toast('Spotify connection cancelled.'); return; }
+  if(!p || p.state !== q.get('state')){ toast('Spotify connection expired. Click Connect again.'); return; }
+  const r = await fetch('https://accounts.spotify.com/api/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({grant_type:'authorization_code', code:q.get('code'), redirect_uri:SP_REDIRECT, client_id:p.clientId, code_verifier:p.verifier})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok){ toast('Spotify refused the connection: ' + (j.error_description || j.error || r.status)); return; }
+  sp.tok = {access:j.access_token, refresh:j.refresh_token, exp:Date.now() + (j.expires_in - 60) * 1000, clientId:p.clientId};
+  spStore(); toast('Spotify connected');
+}
+async function spRefresh(){
+  if(!sp.tok || !sp.tok.refresh) return false;
+  const r = await fetch('https://accounts.spotify.com/api/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({grant_type:'refresh_token', refresh_token:sp.tok.refresh, client_id:sp.tok.clientId})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok){ sp.tok = null; spStore(); return false; }
+  sp.tok.access = j.access_token; if(j.refresh_token) sp.tok.refresh = j.refresh_token;
+  sp.tok.exp = Date.now() + (j.expires_in - 60) * 1000; spStore(); return true;
+}
+async function spApi(path, opts = {}, retried){
+  if(!sp.tok) throw {status:401};
+  if(Date.now() > sp.tok.exp && !(await spRefresh())) throw {status:401};
+  const r = await fetch('https://api.spotify.com/v1' + path, Object.assign({}, opts, {
+    headers:Object.assign({Authorization:'Bearer ' + sp.tok.access}, opts.body ? {'Content-Type':'application/json'} : {})}));
+  if(r.status === 401 && !retried && await spRefresh()) return spApi(path, opts, true);
+  if(r.status === 204 || r.status === 202) return null;
+  const j = await r.json().catch(() => null);
+  if(!r.ok) throw {status:r.status, message:(j && j.error && (j.error.message || j.error)) || ''};
+  return j;
+}
+function spProblem(e){
+  if(e.status === 401){ sp.tok = null; spStore(); return 'Spotify session ended. Connect again.'; }
+  if(e.status === 403) return /premium/i.test(e.message || '') ? 'Spotify Premium is required to control playback.' : 'Spotify refused this action. Is your account in the app\'s user list?';
+  if(e.status === 404) return 'No active Spotify device. Open Spotify on your computer or phone, then try again.';
+  if(e.status === 429) return 'Spotify asked to slow down. Try again in a moment.';
+  return 'Spotify error' + (e.message ? ': ' + e.message : '.');
+}
+
+async function spLoadPlaylists(){
+  let url = '/me/playlists?limit=50', all = [];
+  for(let i = 0; i < 4 && url; i++){
+    const j = await spApi(url);
+    all = all.concat((j.items || []).filter(Boolean));
+    url = j.next ? j.next.replace('https://api.spotify.com/v1', '') : null;
+  }
+  sp.playlists = all.map(p => ({id:p.id, uri:p.uri, name:p.name, img:(p.images && p.images[0] && p.images[0].url) || '', mine:!!(p.owner && sp.me && p.owner.id === sp.me) || p.collaborative}));
+}
+async function spLoadTracks(pl){
+  if(sp.tracks[pl.id]) return sp.tracks[pl.id];
+  try{
+    let url = `/playlists/${pl.id}/items?limit=100`, all = [];
+    for(let i = 0; i < 5 && url; i++){
+      const j = await spApi(url);
+      all = all.concat((j.items || []).map(x => x.item || x.track).filter(t => t && t.uri && !t.is_local));
+      url = j.next ? j.next.replace('https://api.spotify.com/v1', '') : null;
+    }
+    sp.tracks[pl.id] = all.map(t => ({uri:t.uri, name:t.name, artist:(t.artists || t.show && [t.show] || []).map(a => a.name).join(', ')}));
+  }catch(e){
+    sp.tracks[pl.id] = (e.status === 403 || e.status === 404) ? 'locked' : 'error';
+  }
+  return sp.tracks[pl.id];
+}
+async function spPoll(){
+  if(!sp.tok || document.hidden) return;
+  try{
+    sp.player = await spApi('/me/player');
+    sp.err = '';
+  }catch(e){ sp.err = spProblem(e); }
+  renderMusicNow();
+}
+async function spDeviceId(){
+  const want = state.music && state.music.device;
+  if(sp.player && sp.player.device && sp.player.device.id && (!want || sp.player.device.name === want)) return sp.player.device.id;
+  const j = await spApi('/me/player/devices');
+  sp.devices = (j && j.devices) || [];
+  const d = (want && sp.devices.find(x => x.name === want && !x.is_restricted)) || sp.devices.find(x => x.is_active) || sp.devices.find(x => !x.is_restricted);
+  if(!d) throw {status:404};
+  return d.id;
+}
+async function spDo(fn){
+  if(sp.busy) return; sp.busy = true;
+  try{ await fn(); sp.err = ''; }
+  catch(e){ sp.err = spProblem(e); toast(sp.err); }
+  finally{ sp.busy = false; setTimeout(spPoll, 350); }
+}
+const spPlay = (body) => spDo(async () => {
+  const dev = await spDeviceId();
+  await spApi('/me/player/play?device_id=' + dev, {method:'PUT', body: body ? JSON.stringify(body) : undefined});
+});
+
+/* ---- Barre musique ---- */
+function renderMusic(){
+  spLoad();
+  const el = $('#music'); el.hidden = false;
+  const clientId = (state.spotifyClientId || '').trim();
+  if(!sp.tok){
+    el.className = 'music off';
+    el.innerHTML = `
+      <span class="sp-logo" aria-hidden="true">♫</span>
+      <div class="now"><div class="t">Music</div><div class="a">${clientId ? 'Control your Spotify playlists from here.' : 'Add your Spotify Client ID in ⚙ Settings to get started.'}</div></div>
+      <button class="btn primary" id="spConnect" ${clientId ? '' : 'disabled'}>Connect Spotify</button>`;
+    const b = $('#spConnect'); if(b) b.onclick = spLogin;
+    clearInterval(sp.timer); sp.timer = null;
+    return;
+  }
+  el.className = 'music';
+  el.innerHTML = `
+    <div class="ctl">
+      <button id="mShuf" class="sm" aria-label="Shuffle" title="Shuffle">⇄</button>
+      <button id="mPrev" aria-label="Previous">⏮</button>
+      <button id="mPlay" class="play" aria-label="Play">▶</button>
+      <button id="mNext" aria-label="Next">⏭</button>
+      <button id="mRep" class="sm" aria-label="Repeat" title="Repeat">↻</button>
+    </div>
+    <div class="now sp-now"><img id="mArt" alt="" hidden><div style="min-width:0"><div class="t" id="mTitle">—</div><div class="a" id="mSub"></div>
+      <div class="sp-bar"><div id="mProg"></div></div></div></div>
+    <div class="sp-pick">
+      <select id="mPl" aria-label="Playlist"><option value="">Loading playlists…</option></select>
+      <button class="btn" id="mList" aria-expanded="false">Tracks ▾</button>
+      <button class="btn" id="mPlPlay" title="Play this playlist from the start">Play playlist</button>
+    </div>
+    <div class="vol"><button id="mDev" class="tag sp-dev" title="Choose where the music plays" aria-expanded="false"></button><span>Vol.</span><input type="range" id="mVol" min="0" max="100" value="50" aria-label="Volume">
+      <button class="btn sp-out" id="spOut" title="Disconnect Spotify">⏏</button></div>
+    <div class="sp-list" id="mPop" hidden></div>
+    <div class="sp-list sp-devs" id="mDevPop" hidden></div>`;
+
+  $('#mPlay').onclick = () => spDo(async () => {
+    if(sp.player && sp.player.is_playing) await spApi('/me/player/pause', {method:'PUT'});
+    else { const dev = await spDeviceId(); await spApi('/me/player/play?device_id=' + dev, {method:'PUT'}); }
+  });
+  $('#mNext').onclick = () => spDo(() => spApi('/me/player/next', {method:'POST'}));
+  $('#mPrev').onclick = () => spDo(() => spApi('/me/player/previous', {method:'POST'}));
+  $('#mShuf').onclick = () => spDo(() => spApi('/me/player/shuffle?state=' + !(sp.player && sp.player.shuffle_state), {method:'PUT'}));
+  $('#mRep').onclick = () => spDo(() => spApi('/me/player/repeat?state=' + ((sp.player && sp.player.repeat_state !== 'off') ? 'off' : 'context'), {method:'PUT'}));
+  let volT = null;
+  $('#mVol').oninput = e => { clearTimeout(volT); const v = +e.target.value; volT = setTimeout(() => spDo(() => spApi('/me/player/volume?volume_percent=' + v, {method:'PUT'})), 250); };
+  $('#mPl').onchange = e => { state.music = Object.assign({}, state.music, {playlistId:e.target.value}); save(); sp.filter = ''; if(sp.listOpen) renderTrackList(); };
+  $('#mPlPlay').onclick = () => { const pl = curPlaylist(); if(pl) spPlay({context_uri:pl.uri}); };
+  $('#mList').onclick = e => { e.stopPropagation(); sp.listOpen = !sp.listOpen; $('#mList').setAttribute('aria-expanded', sp.listOpen); $('#mPop').hidden = !sp.listOpen; if(sp.listOpen) renderTrackList(); };
+  $('#mDev').onclick = e => { e.stopPropagation(); const pop = $('#mDevPop'); if(pop.hidden) openDevices(); else pop.hidden = true; };
+  $('#spOut').onclick = () => { sp.tok = null; spStore(); renderMusic(); toast('Spotify disconnected'); };
+  if(!sp.devBound) sp.devBound = true, document.addEventListener('mousedown', e => { if(!e.target.closest('#mDevPop,#mDev')){ const p = $('#mDevPop'); if(p) p.hidden = true; } });
+  if(!sp.docBound) sp.docBound = true, document.addEventListener('mousedown', e => { if(sp.listOpen && !e.target.closest('#mPop,#mList')){ sp.listOpen = false; const p = $('#mPop'); if(p) p.hidden = true; } });
+
+  (async () => {
+    try{
+      if(!sp.me){ const me = await spApi('/me'); sp.me = me && me.id; }
+      await spLoadPlaylists();
+      const sel = $('#mPl'); if(!sel) return;
+      sel.innerHTML = sp.playlists.length
+        ? sp.playlists.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
+        : '<option value="">No playlists found</option>';
+      const want = state.music && state.music.playlistId;
+      if(want && sp.playlists.some(p => p.id === want)) sel.value = want;
+      else if(sp.playlists[0]){ state.music = Object.assign({}, state.music, {playlistId:sp.playlists[0].id}); }
+    }catch(e){ toast(spProblem(e)); if(!sp.tok) renderMusic(); }
+  })();
+  spPoll();
+  clearInterval(sp.timer); sp.timer = setInterval(spPoll, 3000);
+}
+async function openDevices(){
+  const pop = $('#mDevPop'); pop.hidden = false;
+  pop.innerHTML = '<div class="sp-lh"><b>Play music on</b></div><div class="sp-items"><p class="bm-hint">Looking for devices…</p></div>';
+  const box = pop.querySelector('.sp-items');
+  try{
+    const j = await spApi('/me/player/devices');
+    sp.devices = (j && j.devices) || [];
+  }catch(e){ box.innerHTML = `<p class="bm-hint">${esc(spProblem(e))}</p>`; return; }
+  const icon = t => ({Computer:'💻', Smartphone:'📱', Speaker:'🔊', TV:'📺', Tablet:'📱'})[t] || '🎵';
+  box.innerHTML = sp.devices.length ? sp.devices.map(d => `
+    <button class="sp-row dev ${d.is_active ? 'on' : ''}" data-id="${esc(d.id)}" data-n="${esc(d.name)}" ${d.is_restricted ? 'disabled' : ''}>
+      <span class="n">${icon(d.type)}</span><span class="tt">${esc(d.name)}</span><span class="ar">${d.is_active ? 'Playing here' : esc(d.type)}</span></button>`).join('')
+    + '<p class="bm-hint">Missing a device? Open Spotify on it (app or open.spotify.com), then reopen this list.</p>'
+    : '<p class="bm-hint">No device found. Open the Spotify app on your Mac, or open.spotify.com in a browser tab, then try again.</p>';
+  box.querySelectorAll('.dev').forEach(b => b.onclick = () => {
+    state.music = Object.assign({}, state.music, {device:b.dataset.n}); save();
+    pop.hidden = true;
+    spDo(() => spApi('/me/player', {method:'PUT', body:JSON.stringify({device_ids:[b.dataset.id], play: !!(sp.player && sp.player.is_playing)})}));
+    toast('Music will play on ' + b.dataset.n);
+  });
+}
+function curPlaylist(){ const id = $('#mPl') && $('#mPl').value; return sp.playlists.find(p => p.id === id); }
+async function renderTrackList(){
+  const pop = $('#mPop'), pl = curPlaylist(); if(!pop) return;
+  if(!pl){ pop.innerHTML = '<p class="bm-hint">Pick a playlist first.</p>'; return; }
+  pop.innerHTML = `<div class="sp-lh"><b>${esc(pl.name)}</b><input id="mFilter" placeholder="Filter tracks…" value="${esc(sp.filter)}"></div><div class="sp-items"><p class="bm-hint">Loading…</p></div>`;
+  const tr = await spLoadTracks(pl);
+  const box = pop.querySelector('.sp-items'); if(!box) return;
+  if(tr === 'locked'){
+    box.innerHTML = `<p class="bm-hint">Spotify only lists the tracks of playlists you created or collaborate on. Use <b>Play playlist</b>, then Next / Previous. Tip: save a copy of this playlist in Spotify (… > Add to other playlist > New playlist) to pick tracks here.</p>`;
+    pop.querySelector('#mFilter').hidden = true; return;
+  }
+  if(tr === 'error'){ box.innerHTML = '<p class="bm-hint">Could not load tracks. Try again.</p>'; return; }
+  const draw = () => {
+    const f = sp.filter.toLowerCase(), cur = sp.player && sp.player.item && sp.player.item.uri;
+    const rows = tr.map((t, i) => ({t, i})).filter(({t}) => !f || (t.name + ' ' + t.artist).toLowerCase().includes(f));
+    box.innerHTML = rows.length ? rows.map(({t, i}) => `<button class="sp-row ${t.uri === cur ? 'on' : ''}" data-i="${i}"><span class="n">${i + 1}</span><span class="tt">${esc(t.name)}</span><span class="ar">${esc(t.artist)}</span></button>`).join('') : '<p class="bm-hint">No match.</p>';
+    box.querySelectorAll('.sp-row').forEach(b => b.onclick = () => { spPlay({context_uri:pl.uri, offset:{uri:tr[+b.dataset.i].uri}}); });
+  };
+  pop.querySelector('#mFilter').oninput = e => { sp.filter = e.target.value; draw(); };
+  draw();
+}
+function fmtMs(ms){ const s = Math.floor((ms || 0) / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function renderMusicNow(){
+  if(!$('#mTitle')) return;
+  const p = sp.player, it = p && p.item;
+  $('#mPlay').textContent = p && p.is_playing ? '⏸' : '▶';
+  $('#mPlay').setAttribute('aria-label', p && p.is_playing ? 'Pause' : 'Play');
+  $('#mShuf').classList.toggle('on', !!(p && p.shuffle_state));
+  $('#mRep').classList.toggle('on', !!(p && p.repeat_state && p.repeat_state !== 'off'));
+  if(sp.err && !p){ $('#mTitle').textContent = 'Nothing playing'; $('#mSub').textContent = sp.err; }
+  else if(!p){ $('#mTitle').textContent = 'Nothing playing'; $('#mSub').textContent = 'Open Spotify on a device, then pick a track.'; }
+  else if(it){
+    $('#mTitle').textContent = it.name;
+    $('#mSub').textContent = ((it.artists || []).map(a => a.name).join(', ') || (it.show && it.show.name) || '') + ' · ' + fmtMs(p.progress_ms) + ' / ' + fmtMs(it.duration_ms);
+  }
+  const art = $('#mArt'), img = it && ((it.album && it.album.images) || it.images || []).slice(-1)[0];
+  if(img){ art.src = img.url; art.hidden = false; } else art.hidden = true;
+  $('#mProg').style.width = it ? Math.min(100, 100 * (p.progress_ms || 0) / (it.duration_ms || 1)) + '%' : '0';
+  const dev = p && p.device;
+  $('#mDev').textContent = (dev ? '🔈 ' + dev.name : 'Choose device') + ' ▾';
+  $('#mDev').className = 'tag sp-dev ' + (dev ? 'ok' : 'err');
+  const vol = $('#mVol'); if(dev && typeof dev.volume_percent === 'number' && document.activeElement !== vol) vol.value = dev.volume_percent;
+  if(sp.listOpen && it){ $('#mPop').querySelectorAll('.sp-row').forEach(b => b.classList.toggle('on', b.querySelector('.tt').textContent === it.name)); }
+}
+
+/* ============ Rendu ============ */
+function renderChannel(){
+  const d = state.discord || {};
+  $('#chanTitle').textContent = d.label ? '#' + d.label : 'Discord';
+}
+function applySkin(){ document.documentElement.dataset.skin = state.skin || 'nuit'; }
+function renderShared(){ applySkin(); renderBanner(); renderScene(); renderChannel(); }
+document.title = isAdmin ? 'DM Table · Admin' : 'DM Table';
+function renderAll(){ renderShared(); renderLeft(); renderFeed(); if(isAdmin){ renderMusic(); setSync(sb ? 'ok' : 'local'); } }
+
+async function boot(){
+  if(!sb){ renderAll(); return; }                       // mode local
+  if(isAdmin){
+    await spHandleReturn().catch(() => toast('Spotify connection failed. Try again.'));
+    session = (await sb.auth.getSession()).data.session;
+    if(!session){ showLogin(); return; }
+    const { data, error } = await sb.from('etat').select('id,data');
+    if(error){ toast('Could not load: ' + error.message); renderAll(); setSync('error'); return; }
+    const pub = data.find(r=>r.id==='public')?.data || {}, prv = data.find(r=>r.id==='prive')?.data || {};
+    const firstRun = !Object.keys(pub).length;
+    state = Object.assign(structuredClone(DEFAULT), firstRun ? {} : pub, prv);
+    for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);   // champs manquants ou vides
+    renderAll();
+    ensureLive();                                         // écoute les déplacements des joueurs
+    // Filet de sécurité : la base signale chaque déplacement enregistré par un joueur
+    sb.channel('db-etat').on('postgres_changes', {event:'UPDATE', schema:'public', table:'etat', filter:'id=eq.public'},
+      payload => mergeFromDb(payload.new && payload.new.data)).subscribe();
+    // publie l'état de départ, ou les nouveautés d'une mise à jour du site (ex. liste des joueurs)
+    if(firstRun || PUBLIC_KEYS.some(k => !(k in pub))) push();
+  } else {
+    try{ localStorage.removeItem('table-mj-code'); }catch(e){}   // ancienne version : code mémorisé durablement
+    let code = ''; try{ code = sessionStorage.getItem('table-mj-code') || ''; }catch(e){}
+    if(!code){ askCode(); return; }
+    const data = await readTable(code);
+    if(!data){ try{ sessionStorage.removeItem('table-mj-code'); }catch(e){} askCode(true); return; }
+    playerCode = code;
+    try{ me = sessionStorage.getItem('table-mj-joueur') || ''; }catch(e){}
+    if(!me){ chooseIdentity(data); return; }
+    state = structuredClone(DEFAULT); state.images = []; state.current = null;
+    Object.assign(state, data);
+    for(const k in DEFAULT) if(state[k] == null) state[k] = structuredClone(DEFAULT[k]);
+    renderAll();
+    playerCh = sb.channel('table-' + code, {config:{broadcast:{self:false}}})
+      .on('broadcast', {event:'etat'}, msg => receive(msg.payload))
+      .on('broadcast', {event:'jeton'}, msg => applyJeton(msg.payload))
+      .on('broadcast', {event:'joueur'}, msg => applyJoueur(msg.payload))
+      .subscribe();
+    // Premier passage : proposer d'importer son image de jeton
+    const mine = myPlayer();
+    let asked = false; try{ asked = sessionStorage.getItem('table-mj-jeton-propose') === '1'; }catch(e){}
+    if(mine && !mine.img && !asked){ try{ sessionStorage.setItem('table-mj-jeton-propose','1'); }catch(e){} openMyToken(true); }
+    // Contrôle régulier : rattrape un message manqué, et ferme la vue si le MJ change le code
+    const check = async () => {
+      if(document.hidden) return;
+      const d = await readTable(code);
+      if(d) receive(d); else { try{ sessionStorage.removeItem('table-mj-code'); }catch(e){} location.reload(); }
+    };
+    setInterval(check, 8000);
+    document.addEventListener('visibilitychange', check);
+  }
+}
+async function readTable(code){
+  const { data, error } = await sb.rpc('lire_table', { code });
+  return error ? null : data;
+}
+function myPlayer(){ return me && me !== '-' ? rosterOf(me) : null; }
+/* Réduit une image en vignette carrée (≈10 Ko) pour le jeton du joueur */
+function tokenThumb(file){
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => {
+      const S = 160, cv = document.createElement('canvas'); cv.width = cv.height = S;
+      const k = Math.max(S / im.width, S / im.height), w = im.width * k, h = im.height * k;
+      cv.getContext('2d').drawImage(im, (S - w) / 2, (S - h) / 2, w, h);
+      let url = cv.toDataURL('image/webp', 0.82);
+      if(!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', 0.82);
+      URL.revokeObjectURL(im.src); res(url);
+    };
+    im.onerror = () => rej(new Error('Unreadable image'));
+    im.src = URL.createObjectURL(file);
+  });
+}
+function openMyToken(first){
+  const r = myPlayer(); if(!r) return;
+  const m = $('#modal');
+  const face = () => r.img ? `<img src="${esc(r.img)}" alt="">` : `<span>${esc(initials(r.nom))}</span>`;
+  m.hidden = false;
+  m.innerHTML = `<div class="modal-card" role="dialog" aria-labelledby="mtT">
+    <h2 id="mtT">${first ? 'Your token' : 'My token'}</h2>
+    <p>${first ? 'Pick a color or upload a picture for ' + esc(r.nom) + '. You can change it later with “My token”.' : 'Change how ' + esc(r.nom) + ' looks on the map.'}</p>
+    <div class="lib-prev"><span class="lib-c big" id="mtPrev" style="--tc:${esc(r.couleur)}">${face()}</span></div>
+    <div class="swatches" role="group" aria-label="Token color">${PLAYER_COLORS.map(c => `<button class="sw ${c===r.couleur?'on':''}" data-c="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div>
+    <label class="btn primary" for="mtFile">Upload a picture</label><input id="mtFile" type="file" accept="image/*" hidden>
+    <button class="btn" id="mtNoImg" ${r.img ? '' : 'hidden'}>Use my initial instead</button>
+    <button class="btn" id="mtClose">${first ? 'Done' : 'Close'}</button>
+  </div>`;
+  const refresh = () => {
+    const p = $('#mtPrev'); p.style.setProperty('--tc', r.couleur); p.innerHTML = face();
+    $('#mtNoImg').hidden = !r.img;
+    m.querySelectorAll('.sw').forEach(b => b.classList.toggle('on', b.dataset.c === r.couleur));
+  };
+  async function commit(patch){
+    const prev = {couleur:r.couleur, img:r.img};
+    Object.assign(r, patch); refresh(); currentMap && currentMap.refresh();
+    if(sb){
+      const { data, error } = await sb.rpc('mon_jeton', {code:playerCode, joueur:me, couleur:r.couleur, img: patch.img === undefined ? null : patch.img});
+      if(error || data === false){ Object.assign(r, prev); refresh(); currentMap && currentMap.refresh(); toast('Not saved. Try again or ask your GM.'); return; }
+    } else save();
+    playerCh && playerCh.send({type:'broadcast', event:'joueur', payload:Object.assign({nom:r.nom, couleur:r.couleur}, patch.img === undefined ? {} : {img:r.img})});
+    toast('Token updated');
+  }
+  m.querySelectorAll('.sw').forEach(b => b.onclick = () => commit({couleur:b.dataset.c}));
+  $('#mtNoImg').onclick = () => commit({img:''});
+  $('#mtClose').onclick = () => { m.hidden = true; };
+  m.onclick = e => { if(e.target === m) m.hidden = true; };   // clic à côté : fermer
+  $('#mtFile').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{ commit({img: await tokenThumb(f)}); }
+    catch(err){ toast('Unreadable image: try a JPG or PNG file.'); }
+  };
+}
+/* Un joueur a changé sa couleur ou son image */
+/* MJ : récupère ce que les joueurs ont modifié eux-mêmes (position de leur jeton, couleur, image) */
+function mergeFromDb(d){
+  if(!d || !state.carte) return;
+  let changed = false;
+  if(d.carte && d.carte.mapId === state.carte.mapId){
+    (d.carte.jetons || []).filter(t => t.type === 'pj').forEach(t => {
+      const mine = state.carte.jetons.find(j => j.id === t.id);
+      if(mine && (mine.x !== t.x || mine.y !== t.y)){ mine.x = t.x; mine.y = t.y; currentMap && currentMap.moveToken(t.id, t.x, t.y); }
+    });
+  }
+  (d.joueurs || []).forEach(r => {
+    const mine = rosterOf(r.nom);
+    if(mine && (mine.couleur !== r.couleur || (mine.img || '') !== (r.img || ''))){ mine.couleur = r.couleur; mine.img = r.img || ''; changed = true; }
+  });
+  if(changed && currentMap) currentMap.refresh();
+}
+function applyJoueur(p){
+  const r = rosterOf(p.nom); if(!r) return;
+  if(p.couleur) r.couleur = p.couleur;
+  if(p.img !== undefined) r.img = p.img;
+  currentMap && currentMap.refresh();
+}
+function chooseIdentity(data){
+  const pjs = (data.joueurs || []);
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').innerHTML = `
+    <h1>Who are you?</h1>
+    <p>Pick your character so you can move their token on the map.</p>
+    <div class="who-list">${pjs.map(t => `<button type="button" class="btn who" data-n="${esc(t.nom)}"><span class="dot" style="background:${esc(t.couleur)}"></span>${esc(t.nom)}</button>`).join('')}
+      ${pjs.length ? '' : '<p class="bm-hint">Your GM hasn\'t added any player characters yet.</p>'}
+      <button type="button" class="btn who" data-n="-">Just watch</button></div>`;
+  $('#loginForm').querySelectorAll('.who').forEach(b => b.onclick = () => {
+    try{ sessionStorage.setItem('table-mj-joueur', b.dataset.n); }catch(e){}
+    location.reload();
+  });
+}
+function askCode(wrong){
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').innerHTML = `
+    <h1>DM Table</h1>
+    <p>Enter the code your Game Master gave you.</p>
+    <label for="cdIn">Access code</label><input id="cdIn" autocomplete="off" required autofocus>
+    <button class="btn primary" type="submit">Join the table</button>
+    <p class="login-err" id="lgErr" ${wrong?'':'hidden'}>Wrong or expired code.</p>`;
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const code = $('#cdIn').value.trim();
+    if(!(await readTable(code))){ const er=$('#lgErr'); er.textContent='Wrong code.'; er.hidden=false; return; }
+    try{ sessionStorage.setItem('table-mj-code', code); }catch(e){}
+    location.reload();
+  };
+}
+function showLogin(){
+  $('#login').hidden = false; $('#app').style.visibility = 'hidden';
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email: $('#lgEmail').value.trim(), password: $('#lgPass').value });
+    if(error){ const er=$('#lgErr'); er.textContent = 'Sign-in failed: check your email and password.'; er.hidden=false; return; }
+    location.reload();
+  };
+}
+boot();
+</script>
+</body>
+</html>
